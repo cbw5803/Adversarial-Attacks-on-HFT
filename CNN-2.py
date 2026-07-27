@@ -164,10 +164,23 @@ def create_cnn2(T, NF, number_of_lstm):
 cnn2 = create_cnn2(trainX_CNN.shape[1], trainX_CNN.shape[2], n_hiddens)
 cnn2.summary()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="XiEwO6NKxZqk" executionInfo={"status": "ok", "timestamp": 1741392962249, "user_tz": 300, "elapsed": 419, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="273fad6f-9684-400e-b3d7-1a90c50b308b"
+# %% id="XiEwO6NKxZqk"
 # %%time
-weights_path = '/content/drive/MyDrive/weights_best_CNN.hdf5'
-cnn2.load_weights(weights_path)
+checkpoint_filepath = '/content/drive/MyDrive/LOBCNN/models/weights_best_CNN2.weights.h5'
+
+if os.path.exists(checkpoint_filepath):
+    cnn2.load_weights(checkpoint_filepath)
+    print("Loaded saved weights.")
+else:
+    print("No saved weights found. Starting training from scratch.")
+    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        save_weights_only=True,
+        monitor='val_accuracy',
+        mode='auto',
+        save_best_only=True)
+    cnn2.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
+             epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="_zHr52WrxcdU" executionInfo={"status": "ok", "timestamp": 1741051798542, "user_tz": 300, "elapsed": 17449, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="b7d29ac5-66dc-4b9c-fcb8-4358c8d77ade"
 test_loss, test_acc = cnn2.evaluate(testX_CNN, testY_CNN)
