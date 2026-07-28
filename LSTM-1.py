@@ -45,14 +45,36 @@ drive.mount('/content/drive')
 # %% [markdown] id="hyDAb2_YZrLf"
 # # Importing Dataset
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="b4TMutLy9lRr" executionInfo={"status": "ok", "timestamp": 1741400763398, "user_tz": 300, "elapsed": 304, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="af32f319-76d5-40a8-879b-2edf06edb132"
+# %% id="b4TMutLy9lRr"
 import os
-if not os.path.isfile('/content/drive/MyDrive/LOBCNN/data/data.zip'):
-    # !wget https://raw.githubusercontent.com/zcakhaa/DeepLOB-Deep-Convolutional-Neural-Networks-for-Limit-Order-Books/master/data/data.zip
-    # !unzip -n data.zip
-    print('data downloaded.')
+import zipfile
+
+# Define the target directory in Google Drive for the unzipped files
+UNZIPPED_DATA_DIR = '/content/drive/MyDrive/LOBCNN/data/'
+
+# Check if the unzipped data directory already exists and contains files
+if not os.path.exists(UNZIPPED_DATA_DIR) or not os.listdir(UNZIPPED_DATA_DIR):
+    print(f"Data not found in {UNZIPPED_DATA_DIR}. Attempting to download and unzip.")
+
+    # Create the target directory if it doesn't exist
+    os.makedirs(UNZIPPED_DATA_DIR, exist_ok=True)
+
+    # Define a temporary path for the downloaded zip file in /content/
+    TEMP_ZIP_PATH = '/content/data.zip'
+
+    # Download the data.zip file to /content/
+    # !wget -q https://raw.githubusercontent.com/zcakhaa/DeepLOB-Deep-Convolutional-Neural-Networks-for-Limit-Order-Books/master/data/data.zip -O {TEMP_ZIP_PATH}
+
+    # Unzip the downloaded file directly into the target directory in Google Drive
+    with zipfile.ZipFile(TEMP_ZIP_PATH, 'r') as zip_ref:
+        zip_ref.extractall(UNZIPPED_DATA_DIR)
+
+    # Optionally, remove the temporary zip file to save space
+    os.remove(TEMP_ZIP_PATH)
+
+    print('Data downloaded and unzipped to Google Drive.')
 else:
-    print('data already existed.')
+    print('Data already existed and is ready in Google Drive.')
 
 
 # %% [markdown] id="6W0-mM9haw5p"
@@ -87,20 +109,19 @@ def prepare_x_y(data, k, T):
     return x, y
 
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="ATO3-Jjt9tIL" executionInfo={"status": "ok", "timestamp": 1741400789818, "user_tz": 300, "elapsed": 26203, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="96e43ff5-0b44-453a-8886-73860869c51d"
-dec_data = np.loadtxt('/content/drive/MyDrive/DeepLOB-Deep-Convolutional-Neural-Networks-for-Limit-Order-Books-master/data/data.zip (Unzipped Files)/Train_Dst_NoAuction_DecPre_CF_7.txt')
+# %% id="ATO3-Jjt9tIL"
+dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
 dec_val = dec_data[:, int(np.floor(dec_data.shape[1] * 0.8)):]
 
-dec_test1 = np.loadtxt('/content/drive/MyDrive/DeepLOB-Deep-Convolutional-Neural-Networks-for-Limit-Order-Books-master/data/data.zip (Unzipped Files)/Test_Dst_NoAuction_DecPre_CF_7.txt')
-dec_test2 = np.loadtxt('/content/drive/MyDrive/DeepLOB-Deep-Convolutional-Neural-Networks-for-Limit-Order-Books-master/data/data.zip (Unzipped Files)/Test_Dst_NoAuction_DecPre_CF_8.txt')
-dec_test3 = np.loadtxt('/content/drive/MyDrive/DeepLOB-Deep-Convolutional-Neural-Networks-for-Limit-Order-Books-master/data/data.zip (Unzipped Files)/Test_Dst_NoAuction_DecPre_CF_9.txt')
+dec_test1 = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Test_Dst_NoAuction_DecPre_CF_7.txt'))
+dec_test2 = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Test_Dst_NoAuction_DecPre_CF_8.txt'))
+dec_test3 = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Test_Dst_NoAuction_DecPre_CF_9.txt'))
 dec_test = np.hstack((dec_test1, dec_test2, dec_test3))
 
 k = 4 # which prediction horizon
 T = 100 # the length of a single input
 n_hiddens = 64
-checkpoint_filepath = './model_tensorflow1_weights'
 
 trainX_CNN, trainY_CNN = prepare_x_y(dec_train, k, T)
 valX_CNN, valY_CNN = prepare_x_y(dec_val, k, T)
