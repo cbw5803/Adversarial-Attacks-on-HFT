@@ -109,6 +109,28 @@ def prepare_x_y(data, k, T):
     return x, y
 
 
+def macro_f1(y_true, y_pred):
+    """Macro-averaged F1 score for multi-class classification."""
+    y_pred = tf.cast(tf.argmax(y_pred, axis=-1), tf.int32)
+    y_true = tf.cast(tf.argmax(y_true, axis=-1), tf.int32)
+
+    f1_scores = []
+    for i in range(3):
+        y_true_i = tf.cast(tf.equal(y_true, i), tf.float32)
+        y_pred_i = tf.cast(tf.equal(y_pred, i), tf.float32)
+
+        tp = tf.reduce_sum(y_true_i * y_pred_i)
+        fp = tf.reduce_sum((1.0 - y_true_i) * y_pred_i)
+        fn = tf.reduce_sum(y_true_i * (1.0 - y_pred_i))
+
+        precision = tp / (tp + fp + tf.keras.backend.epsilon())
+        recall = tp / (tp + fn + tf.keras.backend.epsilon())
+        f1 = 2.0 * precision * recall / (precision + recall + tf.keras.backend.epsilon())
+        f1_scores.append(f1)
+
+    return tf.reduce_mean(tf.stack(f1_scores))
+
+
 # %% id="ATO3-Jjt9tIL"
 dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
@@ -155,7 +177,7 @@ def create_lstm1(T, NF, number_of_lstm):
 
     model = Model(inputs=input_lmd, outputs=out)
     adam = keras.optimizers.Adam(learning_rate=0.0001)
-    model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy', macro_f1])
 
     return model
 
@@ -175,11 +197,11 @@ else:
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         save_weights_only=True,
-        monitor='val_accuracy',
-        mode='auto',
+        monitor='val_macro_f1',
+        mode='max',
         save_best_only=True)
     lstm1.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
-              epochs=50, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
+              epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="3YeR0lH39-Oi" executionInfo={"status": "ok", "timestamp": 1741056075609, "user_tz": 300, "elapsed": 21576, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="b9b86a3a-cddd-4dd4-b086-60cb2db9abe7"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(lstm1.predict(testX_CNN), axis=1)))

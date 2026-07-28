@@ -107,6 +107,28 @@ def prepare_x_y(data, k, T):
     return x, y
 
 
+def macro_f1(y_true, y_pred):
+    """Macro-averaged F1 score for multi-class classification."""
+    y_pred = tf.cast(tf.argmax(y_pred, axis=-1), tf.int32)
+    y_true = tf.cast(tf.argmax(y_true, axis=-1), tf.int32)
+
+    f1_scores = []
+    for i in range(3):
+        y_true_i = tf.cast(tf.equal(y_true, i), tf.float32)
+        y_pred_i = tf.cast(tf.equal(y_pred, i), tf.float32)
+
+        tp = tf.reduce_sum(y_true_i * y_pred_i)
+        fp = tf.reduce_sum((1.0 - y_true_i) * y_pred_i)
+        fn = tf.reduce_sum(y_true_i * (1.0 - y_pred_i))
+
+        precision = tp / (tp + fp + tf.keras.backend.epsilon())
+        recall = tp / (tp + fn + tf.keras.backend.epsilon())
+        f1 = 2.0 * precision * recall / (precision + recall + tf.keras.backend.epsilon())
+        f1_scores.append(f1)
+
+    return tf.reduce_mean(tf.stack(f1_scores))
+
+
 # %% id="KHX4aeaWclN0"
 dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
@@ -149,7 +171,7 @@ input_shape = (100, 40, 1)
 
 cnn_model = create_cnn_model(input_shape)
 
-cnn_model.compile(optimizer='adam', loss=tf.keras.losses.CategoricalCrossentropy(from_logits=False), metrics=['accuracy'])
+cnn_model.compile(optimizer='adam', loss=tf.keras.losses.CategoricalCrossentropy(from_logits=False), metrics=['accuracy', macro_f1])
 
 cnn_model.summary()
 
@@ -165,11 +187,11 @@ else:
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         save_weights_only=True,
-        monitor='val_loss',
-        mode='auto',
+        monitor='val_macro_f1',
+        mode='max',
         save_best_only=True)
     cnn_model.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
-                 epochs=10, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
+                 epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
 # %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 12539, "status": "ok", "timestamp": 1741295890147, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}, "user_tz": 300} id="GXnnVsHwct4e" outputId="4da500b0-bfc8-4cbc-a915-5edc75ac8814"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(cnn_model.predict(testX_CNN), axis=1)))
