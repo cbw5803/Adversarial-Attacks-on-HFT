@@ -550,7 +550,7 @@ def calculate_perturbation_volume(original, perturbed):
 
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="44gLbei-g84P" executionInfo={"status": "ok", "timestamp": 1741411190817, "user_tz": 300, "elapsed": 1023653, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="92f4f4d9-dc91-4059-f571-e8a36cd34806"
-""" ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES"""
+""" ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES (LOW)"""
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import accuracy_score
@@ -636,31 +636,6 @@ def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
         perturbed_images = perturbed_images + step_size * signed_masked
 
         # Step 1: Apply volume constraint
-        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-
-        # Step 2: Apply L2 norm constraint (projection step)
-        delta = perturbed_images - images  # Calculate current perturbation
-
-        # Reshape to flatten all dimensions except batch
-        delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
-
-        # Calculate L2 norm on the flattened dimensions
-        norm = tf.norm(delta_flat, axis=1, keepdims=True)
-
-        # Reshape norm for broadcasting
-        norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
-
-        # Scale perturbation
-        scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
-        delta = delta * scaling
-
-        perturbed_images = images + delta  # Apply constrained perturbation
-
-        # Step 3: Apply clipping to valid range [0,1]
-        perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-
-        # Step 4: Re-apply volume constraint after all other constraints
-        # This ensures volume constraint takes precedence if there's a conflict
         perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
 
     return perturbed_images

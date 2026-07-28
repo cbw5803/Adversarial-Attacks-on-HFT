@@ -649,9 +649,7 @@ def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
         # Apply gradient step
         perturbed_images = perturbed_images + step_size * signed_masked
 
-        # Step 3: Apply clipping to valid range [0,1]
-        perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-        # This ensures volume constraint takes precedence if there's a conflict
+        # Step 1: Apply volume constraint
         perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
 
     return perturbed_images
@@ -870,7 +868,7 @@ import matplotlib.pyplot as plt
 max_test_size = testX_CNN.shape[0]
 batch_size = 2000
 num_batches = max_test_size // batch_size
-epsilon_values = [0.01]
+epsilon_values = [0.01, 0.1, 1, 10]
 num_iterations = 5
 step_size = 0.01
 
@@ -943,7 +941,22 @@ def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
         # Apply gradient step
         perturbed_images = perturbed_images + step_size * signed_masked
 
-        # Apply volume constraint
+        # Step 1: Apply volume constraint
+        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
+
+        # Step 2: Apply L2 norm constraint (projection step)
+        delta = perturbed_images - images
+        delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
+        norm = tf.norm(delta_flat, axis=1, keepdims=True)
+        norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
+        scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
+        delta = delta * scaling
+        perturbed_images = images + delta
+
+        # Step 3: Apply clipping to valid range [0,1]
+        perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
+
+        # Step 4: Re-apply volume constraint
         perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
 
     return perturbed_images
@@ -1161,7 +1174,7 @@ import matplotlib.pyplot as plt
 max_test_size = testX_CNN.shape[0]
 batch_size = 2000
 num_batches = max_test_size // batch_size
-epsilon_values = [0.1, 1, 10]
+epsilon_values = [0.01, 0.1, 1, 10]
 num_iterations = 5
 step_size = 0.01
 

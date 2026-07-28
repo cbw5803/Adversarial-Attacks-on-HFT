@@ -600,12 +600,14 @@ import matplotlib.pyplot as plt
 max_test_size = testX_CNN.shape[0]
 batch_size = 2000
 num_batches = max_test_size // batch_size
-epsilon_values = [0.000001, 0.00001, 0.0001]
+epsilon_values = [0.000001, 0.00001, 0.0001, 0.001]
 num_iterations = 5
 step_size = 0.01
 
 # Define your model
 model = cnn2
+
+"""LOW EPSILON: volume constraint only"""
 
 avg_accuracies1 = {}
 avg_accuracies2 = {}
@@ -701,38 +703,7 @@ def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
         # Step 1: Apply volume constraint
         perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
 
-        # Step 2: Apply L2 norm constraint (projection step)
-        delta = perturbed_images - images  # Calculate current perturbation
-
-        # Reshape to flatten all dimensions except batch
-        delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
-
-        # Calculate L2 norm on the flattened dimensions
-        norm = tf.norm(delta_flat, axis=1, keepdims=True)
-
-        # Reshape norm for broadcasting
-        norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
-
-        # Scale perturbation
-        scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
-        delta = delta * scaling
-
-        perturbed_images = images + delta  # Apply constrained perturbation
-
-        # Step 3: Apply clipping to valid range [0,1]
-        perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-
-        # Step 4: Re-apply volume constraint after all other constraints
-        # This ensures volume constraint takes precedence if there's a conflict
-        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-
     return perturbed_images
-
-# Example usage in the main loop:
-# Replace:
-# perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon)
-# With:
-# perturbed_images1 = pgd_attack_with_volume_constraint(batch_images, batch_labels, epsilon, trainX_CNN, start_idx, end_idx)
 
 def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
     images = images.numpy()
@@ -947,7 +918,7 @@ import matplotlib.pyplot as plt
 max_test_size = testX_CNN.shape[0]
 batch_size = 2000
 num_batches = max_test_size // batch_size
-epsilon_values = [0.01]
+epsilon_values = [0.01, 0.1, 1, 10]
 num_iterations = 5
 step_size = 0.01
 

@@ -556,10 +556,10 @@ from sklearn.metrics import precision_score, recall_score, roc_curve, auc, class
 import matplotlib.pyplot as plt
 
 # Define constants
-max_train_size = trainX_CNN.shape[0]
+max_test_size = testX_CNN.shape[0]
 batch_size = 2000
-num_batches = max_train_size // batch_size
-epsilon_values = [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10]
+num_batches = max_test_size // batch_size
+epsilon_values = [0.000001, 0.00001, 0.0001, 0.001]
 num_iterations = 5
 step_size = 0.01
 
@@ -590,9 +590,9 @@ def adversarial_pattern(image, label):
     signed_grad = tf.sign(gradient)
     return signed_grad
 
-def data_set(trainX_CNN, start_idx, end_idx):
-    shifted_trainX_CNN = tf.concat([trainX_CNN[start_idx:end_idx, 1:100, :, :], trainX_CNN[start_idx:end_idx, 99:, :, :]], axis=1)
-    return shifted_trainX_CNN
+def data_set(testX_CNN, start_idx, end_idx):
+    shifted_testX_CNN = tf.concat([testX_CNN[start_idx:end_idx, 1:100, :, :], testX_CNN[start_idx:end_idx, 99:, :, :]], axis=1)
+    return shifted_testX_CNN
 
 def fgsm_attack(images, labels, epsilon):
     with tf.GradientTape() as tape:
@@ -611,7 +611,7 @@ def fgsm_attack(images, labels, epsilon):
     perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
     return perturbed_images
 
-def pgd_attack(images, labels, epsilon):
+def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
     perturbed_images = tf.identity(images)
     for _ in range(num_iterations):
         with tf.GradientTape() as tape:
@@ -628,33 +628,18 @@ def pgd_attack(images, labels, epsilon):
 
         perturbed_images = perturbed_images + step_size * signed_masked
 
-        # Add projection step here with fixed norm calculation:
-        delta = perturbed_images - images  # Calculate current perturbation
+        # Step 1: Apply volume constraint
+        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
 
-        # Reshape to flatten all dimensions except batch
-        delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
-
-        # Calculate L2 norm on the flattened dimensions
-        norm = tf.norm(delta_flat, axis=1, keepdims=True)
-
-        # Reshape norm for broadcasting
-        norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
-
-        # Scale perturbation
-        scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
-        delta = delta * scaling
-
-        perturbed_images = images + delta  # Apply constrained perturbation
-        perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
     return perturbed_images
 
-def volume_constraint(images, trainX_CNN, dimension, start_idx, end_idx):
+def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
     images = images.numpy()
     slices = [slice(None)] * images.ndim
-    trainX_CNN = trainX_CNN[start_idx:end_idx]
+    testX_CNN = testX_CNN[start_idx:end_idx]
     for idx in range(images.shape[dimension]):
         slices[dimension] = idx
-        images[tuple(slices)] = np.maximum(images[tuple(slices)], trainX_CNN[tuple(slices)])
+        images[tuple(slices)] = np.maximum(images[tuple(slices)], testX_CNN[tuple(slices)])
     images = tf.convert_to_tensor(images, dtype=tf.float32)
     return images
 
@@ -743,11 +728,11 @@ for epsilon in epsilon_values:
         start_idx = i * batch_size
         end_idx = (i + 1) * batch_size
 
-        batch_images = data_set(trainX_CNN, start_idx, end_idx)
-        batch_images = volume_constraint(batch_images, trainX_CNN, 2, start_idx, end_idx)
-        batch_labels = trainY_CNN[start_idx:end_idx]
+        batch_images = data_set(testX_CNN, start_idx, end_idx)
+        batch_images = volume_constraint(batch_images, testX_CNN, 2, start_idx, end_idx)
+        batch_labels = testY_CNN[start_idx:end_idx]
 
-        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon)
+        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon, trainX_CNN, start_idx, end_idx)
         perturbed_images2 = fgsm_attack(batch_images, batch_labels, epsilon)
 
         perturbation1 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images1.numpy())
@@ -860,7 +845,7 @@ import matplotlib.pyplot as plt
 max_test_size = testX_CNN.shape[0]
 batch_size = 2000
 num_batches = max_test_size // batch_size
-epsilon_values = [0.000001, 0.00001, 0.0001]
+epsilon_values = [0.01, 0.1, 1, 10]
 num_iterations = 5
 step_size = 0.01
 
@@ -912,7 +897,7 @@ def fgsm_attack(images, labels, epsilon):
     perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
     return perturbed_images
 
-def pgd_attack(images, labels, epsilon):
+def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
     perturbed_images = tf.identity(images)
     for _ in range(num_iterations):
         with tf.GradientTape() as tape:
@@ -929,24 +914,24 @@ def pgd_attack(images, labels, epsilon):
 
         perturbed_images = perturbed_images + step_size * signed_masked
 
-        # Add projection step here with fixed norm calculation:
-        delta = perturbed_images - images  # Calculate current perturbation
+        # Step 1: Apply volume constraint
+        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
 
-        # Reshape to flatten all dimensions except batch
+        # Step 2: Apply L2 norm constraint (projection step)
+        delta = perturbed_images - images
         delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
-
-        # Calculate L2 norm on the flattened dimensions
         norm = tf.norm(delta_flat, axis=1, keepdims=True)
-
-        # Reshape norm for broadcasting
         norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
-
-        # Scale perturbation
         scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
         delta = delta * scaling
+        perturbed_images = images + delta
 
-        perturbed_images = images + delta  # Apply constrained perturbation
+        # Step 3: Apply clipping to valid range [0,1]
         perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
+
+        # Step 4: Re-apply volume constraint
+        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
+
     return perturbed_images
 
 def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
@@ -1048,7 +1033,7 @@ for epsilon in epsilon_values:
         batch_images = volume_constraint(batch_images, testX_CNN, 2, start_idx, end_idx)
         batch_labels = testY_CNN[start_idx:end_idx]
 
-        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon)
+        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon, trainX_CNN, start_idx, end_idx)
         perturbed_images2 = fgsm_attack(batch_images, batch_labels, epsilon)
 
         perturbation1 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images1.numpy())
@@ -1161,7 +1146,7 @@ import matplotlib.pyplot as plt
 max_test_size = testX_CNN.shape[0]
 batch_size = 2000
 num_batches = max_test_size // batch_size
-epsilon_values = [0.001, 0.01, 0.1, 1, 10]
+epsilon_values = [0.01, 0.1, 1, 10]
 num_iterations = 5
 step_size = 0.01
 
@@ -1213,7 +1198,7 @@ def fgsm_attack(images, labels, epsilon):
     perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
     return perturbed_images
 
-def pgd_attack(images, labels, epsilon):
+def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
     perturbed_images = tf.identity(images)
     for _ in range(num_iterations):
         with tf.GradientTape() as tape:
@@ -1230,24 +1215,24 @@ def pgd_attack(images, labels, epsilon):
 
         perturbed_images = perturbed_images + step_size * signed_masked
 
-        # Add projection step here with fixed norm calculation:
-        delta = perturbed_images - images  # Calculate current perturbation
+        # Step 1: Apply volume constraint
+        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
 
-        # Reshape to flatten all dimensions except batch
+        # Step 2: Apply L2 norm constraint (projection step)
+        delta = perturbed_images - images
         delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
-
-        # Calculate L2 norm on the flattened dimensions
         norm = tf.norm(delta_flat, axis=1, keepdims=True)
-
-        # Reshape norm for broadcasting
         norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
-
-        # Scale perturbation
         scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
         delta = delta * scaling
+        perturbed_images = images + delta
 
-        perturbed_images = images + delta  # Apply constrained perturbation
+        # Step 3: Apply clipping to valid range [0,1]
         perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
+
+        # Step 4: Re-apply volume constraint
+        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
+
     return perturbed_images
 
 def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
@@ -1349,7 +1334,7 @@ for epsilon in epsilon_values:
         batch_images = volume_constraint(batch_images, testX_CNN, 2, start_idx, end_idx)
         batch_labels = testY_CNN[start_idx:end_idx]
 
-        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon)
+        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon, trainX_CNN, start_idx, end_idx)
         perturbed_images2 = fgsm_attack(batch_images, batch_labels, epsilon)
 
         perturbation1 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images1.numpy())
