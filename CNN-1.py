@@ -1631,3 +1631,604 @@ for epsilon in epsilon_values:
     tf.keras.backend.clear_session()
 
 # %% id="rSBmbAuNuOu5"
+
+# %% colab={"base_uri": "https://localhost:8080/"} id="Qtz8ApMOsA6G_copy" outputId="d6294c74-3f0f-47bd-f70d-b8117885046a"
+"""TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+
+def run_adversarial_trading_analysis(model, testX_CNN, testY_CNN, dec_test, epsilon_values, batch_size=2000):
+    """Run trading strategy analysis with adversarial attacks"""
+    results_pgd = []
+    results_fgsm = []
+    thresholds = [0.85, 0.90, 0.95, 0.99]  # Explicit thresholds
+
+    # Define constants needed for PGD attack
+    num_iterations = 5
+    step_size = 0.01
+
+    def data_set(testX_CNN, start_idx, end_idx):
+        """Prepare the dataset by shifting"""
+        shifted_testX_CNN = tf.concat([
+            testX_CNN[start_idx:end_idx, 1:100, :, :],
+            testX_CNN[start_idx:end_idx, 99:, :, :]
+        ], axis=1)
+        return tf.cast(shifted_testX_CNN, tf.float32)
+
+    def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
+        """Apply volume constraints to the images"""
+        images = images.numpy()
+        slices = [slice(None)] * images.ndim
+        testX_CNN_batch = testX_CNN[start_idx:end_idx]
+        for idx in range(images.shape[dimension]):
+            slices[dimension] = idx
+            images[tuple(slices)] = np.maximum(
+                images[tuple(slices)],
+                testX_CNN_batch[tuple(slices)]
+            )
+        return tf.convert_to_tensor(images, dtype=tf.float32)
+
+    def get_model_predictions(perturbed_images):
+        """Get model predictions with error handling"""
+        try:
+            with tf.device('/CPU:0'):
+                predictions = model(perturbed_images, training=False)
+                return predictions.numpy()
+        except Exception as e:
+            print(f"Error in model prediction: {str(e)}")
+            return None
+
+    def fgsm_attack(images, labels, epsilon):
+        """Implement FGSM attack"""
+        try:
+            with tf.GradientTape() as tape:
+                tape.watch(images)
+                predictions = model(images, training=False)
+                loss = tf.keras.losses.CategoricalCrossentropy()(labels, predictions)
+
+            gradient = tape.gradient(loss, images)
+            signed_grad = tf.sign(gradient)
+
+            signed_masked = signed_grad.numpy()
+            signed_masked[:, :99, :, :] = 0
+            signed_masked[:, 99:, ::2, :] = 0
+            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
+
+            perturbed_images = images + epsilon * signed_masked
+            return tf.clip_by_value(perturbed_images, 0, 1)
+        except Exception as e:
+            print(f"Error in FGSM attack: {str(e)}")
+            return None
+
+    def pgd_attack(images, labels, epsilon, test_data, start_idx, end_idx):
+        """Implement PGD attack with volume constraint"""
+        perturbed_images = tf.identity(images)
+
+        for _ in range(num_iterations):
+            # Gradient step
+            with tf.GradientTape() as tape:
+                tape.watch(perturbed_images)
+                predictions = model(perturbed_images, training=False)
+                loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
+            gradient = tape.gradient(loss, perturbed_images)
+            signed_grad = tf.sign(gradient)
+
+            # Apply masking to gradient
+            signed_masked = signed_grad.numpy()
+            signed_masked[:, :99, :, :] = 0
+            signed_masked[:, 99:, ::2, :] = 0
+            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
+
+            # Apply gradient step
+            perturbed_images = perturbed_images + step_size * signed_masked
+
+            # Step 1: Apply volume constraint
+            perturbed_images = volume_constraint(perturbed_images, test_data, 2, start_idx, end_idx)
+
+            # Step 2: Apply L2 norm constraint (projection step)
+            delta = perturbed_images - images  # Calculate current perturbation
+
+            # Reshape to flatten all dimensions except batch
+            delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
+
+            # Calculate L2 norm on the flattened dimensions
+            norm = tf.norm(delta_flat, axis=1, keepdims=True)
+
+            # Reshape norm for broadcasting
+            norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
+
+            # Scale perturbation
+            scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
+            delta = delta * scaling
+
+            perturbed_images = images + delta  # Apply constrained perturbation
+
+            # Step 3: Apply clipping to valid range [0,1]
+            perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
+
+            # Step 4: Re-apply volume constraint after all other constraints
+            # This ensures volume constraint takes precedence if there's a conflict
+            perturbed_images = volume_constraint(perturbed_images, test_data, 2, start_idx, end_idx)
+
+        return perturbed_images
+
+    max_test_size = testX_CNN.shape[0]
+    num_batches = max_test_size // batch_size
+
+    for epsilon in epsilon_values:
+        print(f"\nAnalyzing epsilon: {epsilon}")
+
+        pgd_predictions = []
+        fgsm_predictions = []
+
+        for i in range(num_batches):
+            start_idx = i * batch_size
+            end_idx = min((i + 1) * batch_size, max_test_size)
+
+            try:
+                # Prepare batch data
+                batch_images = data_set(testX_CNN, start_idx, end_idx)
+                batch_images = volume_constraint(batch_images, testX_CNN, 2, start_idx, end_idx)
+                batch_labels = testY_CNN[start_idx:end_idx]
+
+                # Generate adversarial examples
+                perturbed_images_pgd = pgd_attack(batch_images, batch_labels, epsilon, testX_CNN, start_idx, end_idx)
+                perturbed_images_fgsm = fgsm_attack(batch_images, batch_labels, epsilon)
+
+                if perturbed_images_pgd is not None and perturbed_images_fgsm is not None:
+                    # Calculate perturbation volumes
+                    pgd_volume = np.mean(np.linalg.norm(
+                        (perturbed_images_pgd - batch_images).numpy().reshape(batch_images.shape[0], -1),
+                        axis=1
+                    ))
+                    fgsm_volume = np.mean(np.linalg.norm(
+                        (perturbed_images_fgsm - batch_images).numpy().reshape(batch_images.shape[0], -1),
+                        axis=1
+                    ))
+                    print(f"Batch {i+1}/{num_batches} - PGD volume: {pgd_volume:.6f}, FGSM volume: {fgsm_volume:.6f}")
+
+                    # Get predictions
+                    pgd_pred = get_model_predictions(perturbed_images_pgd)
+                    fgsm_pred = get_model_predictions(perturbed_images_fgsm)
+
+                    if pgd_pred is not None:
+                        pgd_predictions.append(pgd_pred)
+                    if fgsm_pred is not None:
+                        fgsm_predictions.append(fgsm_pred)
+
+            except Exception as e:
+                print(f"Error processing batch {i}: {str(e)}")
+                continue
+
+            tf.keras.backend.clear_session()
+
+        if pgd_predictions and fgsm_predictions:
+            pgd_predictions = np.vstack(pgd_predictions)
+            fgsm_predictions = np.vstack(fgsm_predictions)
+
+            # Process for each threshold
+            for threshold in thresholds:
+                # Process PGD results
+                pgd_result = implement_fi2010_strategy(
+                    predictions=pgd_predictions,
+                    dec_data=dec_test,
+                    prob_threshold=threshold
+                )
+                if pgd_result:
+                    pgd_result.update({
+                        'epsilon': epsilon,
+                        'threshold': threshold,
+                        'attack_type': 'PGD'
+                    })
+                    results_pgd.append(pgd_result)
+
+                # Process FGSM results
+                fgsm_result = implement_fi2010_strategy(
+                    predictions=fgsm_predictions,
+                    dec_data=dec_test,
+                    prob_threshold=threshold
+                )
+                if fgsm_result:
+                    fgsm_result.update({
+                        'epsilon': epsilon,
+                        'threshold': threshold,
+                        'attack_type': 'FGSM'
+                    })
+                    results_fgsm.append(fgsm_result)
+
+    # Create DataFrames
+    pgd_df = pd.DataFrame(results_pgd) if results_pgd else pd.DataFrame()
+    fgsm_df = pd.DataFrame(results_fgsm) if results_fgsm else pd.DataFrame()
+
+    # Display detailed summaries
+    if not pgd_df.empty:
+        print("\nPGD Attack Summary by Threshold:")
+        summary_pgd = pgd_df.groupby(['epsilon', 'threshold'])[
+            ['total_profit', 'num_trades', 'win_rate']
+        ].mean().round(4)
+
+        # Format the display
+        pd.set_option('display.float_format', lambda x: '%.4f' % x)
+        print("\nPGD Analysis Results:")
+        for eps in epsilon_values:
+            print(f"\nEpsilon: {eps}")
+            print(summary_pgd.loc[eps])
+
+    if not fgsm_df.empty:
+        print("\nFGSM Attack Summary by Threshold:")
+        summary_fgsm = fgsm_df.groupby(['epsilon', 'threshold'])[
+            ['total_profit', 'num_trades', 'win_rate']
+        ].mean().round(4)
+
+        print("\nFGSM Analysis Results:")
+        for eps in epsilon_values:
+            print(f"\nEpsilon: {eps}")
+            print(summary_fgsm.loc[eps])
+
+    return pgd_df, fgsm_df
+
+def implement_fi2010_strategy(predictions, dec_data, prob_threshold=0.5, k=4, alpha=0.001):
+    """Implementation of the FI-2010 trading strategy"""
+    ask_prices = dec_data[0, :]
+    bid_prices = dec_data[2, :]
+    mid_prices = (ask_prices + bid_prices) / 2
+
+    min_length = min(len(predictions), len(mid_prices) - k)
+    predictions = predictions[:min_length]
+    trades_info = []
+    budget = 100
+
+    for i in range(k, min_length):
+        m_plus = np.mean(mid_prices[i+1:i+k+1])
+        lt = (m_plus - mid_prices[i]) / mid_prices[i]
+
+        pred_class = np.argmax(predictions[i])
+        max_prob = np.max(predictions[i])
+
+        if max_prob > prob_threshold and pred_class != 1:
+            actual_direction = 1 if lt > alpha else (-1 if lt < -alpha else 0)
+            shares = budget / mid_prices[i]
+
+            if pred_class == 2:  # Long trade
+                cost = shares * mid_prices[i]
+                proceeds = shares * m_plus
+                profit = proceeds - cost
+                trades_info.append({
+                    'movement': 'up',
+                    'profit': profit,
+                    'correct': actual_direction == 1
+                })
+            elif pred_class == 0:  # Short trade
+                proceeds = shares * mid_prices[i]
+                cost = shares * m_plus
+                profit = proceeds - cost
+                trades_info.append({
+                    'movement': 'down',
+                    'profit': profit,
+                    'correct': actual_direction == -1
+                })
+
+    if trades_info:
+        trades_df = pd.DataFrame(trades_info)
+        return {
+            'threshold': prob_threshold,
+            'total_profit': trades_df['profit'].sum(),
+            'num_trades': len(trades_df),
+            'win_rate': trades_df['correct'].mean() * 100,
+            'avg_profit': trades_df['profit'].mean(),
+            'long_trades': len(trades_df[trades_df['movement'] == 'up']),
+            'short_trades': len(trades_df[trades_df['movement'] == 'down'])
+        }
+    return None
+
+epsilon_values = [0.000001, 0.00001, 0.0001, 0.001]
+results_pgd, results_fgsm = run_adversarial_trading_analysis(
+    model=cnn_model,
+    testX_CNN=testX_CNN,
+    testY_CNN=testY_CNN,
+    dec_test=dec_test,
+    epsilon_values=epsilon_values,
+    batch_size=2000
+)
+
+# %% colab={"base_uri": "https://localhost:8080/"} id="FL4fL6U0uRFE_copy" outputId="6a0a0ff4-2f56-43dc-a04b-e5a34215c0e2"
+"""TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+
+def run_adversarial_trading_analysis(model, testX_CNN, testY_CNN, dec_test, epsilon_values, batch_size=2000):
+    """Run trading strategy analysis with adversarial attacks"""
+    results_pgd = []
+    results_fgsm = []
+    thresholds = [0.85, 0.90, 0.95, 0.99]  # Explicit thresholds
+
+    # Define constants needed for PGD attack
+    num_iterations = 5
+    step_size = 0.01
+
+    def data_set(testX_CNN, start_idx, end_idx):
+        """Prepare the dataset by shifting"""
+        shifted_testX_CNN = tf.concat([
+            testX_CNN[start_idx:end_idx, 1:100, :, :],
+            testX_CNN[start_idx:end_idx, 99:, :, :]
+        ], axis=1)
+        return tf.cast(shifted_testX_CNN, tf.float32)
+
+    def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
+        """Apply volume constraints to the images"""
+        images = images.numpy()
+        slices = [slice(None)] * images.ndim
+        testX_CNN_batch = testX_CNN[start_idx:end_idx]
+        for idx in range(images.shape[dimension]):
+            slices[dimension] = idx
+            images[tuple(slices)] = np.maximum(
+                images[tuple(slices)],
+                testX_CNN_batch[tuple(slices)]
+            )
+        return tf.convert_to_tensor(images, dtype=tf.float32)
+
+    def get_model_predictions(perturbed_images):
+        """Get model predictions with error handling"""
+        try:
+            with tf.device('/CPU:0'):
+                predictions = model(perturbed_images, training=False)
+                return predictions.numpy()
+        except Exception as e:
+            print(f"Error in model prediction: {str(e)}")
+            return None
+
+    def fgsm_attack(images, labels, epsilon):
+        """Implement FGSM attack"""
+        try:
+            with tf.GradientTape() as tape:
+                tape.watch(images)
+                predictions = model(images, training=False)
+                loss = tf.keras.losses.CategoricalCrossentropy()(labels, predictions)
+
+            gradient = tape.gradient(loss, images)
+            signed_grad = tf.sign(gradient)
+
+            signed_masked = signed_grad.numpy()
+            signed_masked[:, :99, :, :] = 0
+            signed_masked[:, 99:, ::2, :] = 0
+            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
+
+            perturbed_images = images + epsilon * signed_masked
+            return tf.clip_by_value(perturbed_images, 0, 1)
+        except Exception as e:
+            print(f"Error in FGSM attack: {str(e)}")
+            return None
+
+    def pgd_attack(images, labels, epsilon, test_data, start_idx, end_idx):
+        """Implement PGD attack with volume constraint"""
+        perturbed_images = tf.identity(images)
+
+        for _ in range(num_iterations):
+            # Gradient step
+            with tf.GradientTape() as tape:
+                tape.watch(perturbed_images)
+                predictions = model(perturbed_images, training=False)
+                loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
+            gradient = tape.gradient(loss, perturbed_images)
+            signed_grad = tf.sign(gradient)
+
+            # Apply masking to gradient
+            signed_masked = signed_grad.numpy()
+            signed_masked[:, :99, :, :] = 0
+            signed_masked[:, 99:, ::2, :] = 0
+            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
+
+            # Apply gradient step
+            perturbed_images = perturbed_images + step_size * signed_masked
+
+            # Step 1: Apply volume constraint
+            perturbed_images = volume_constraint(perturbed_images, test_data, 2, start_idx, end_idx)
+
+            # Step 2: Apply L2 norm constraint (projection step)
+            delta = perturbed_images - images  # Calculate current perturbation
+
+            # Reshape to flatten all dimensions except batch
+            delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
+
+            # Calculate L2 norm on the flattened dimensions
+            norm = tf.norm(delta_flat, axis=1, keepdims=True)
+
+            # Reshape norm for broadcasting
+            norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
+
+            # Scale perturbation
+            scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
+            delta = delta * scaling
+
+            perturbed_images = images + delta  # Apply constrained perturbation
+
+            # Step 3: Apply clipping to valid range [0,1]
+            perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
+
+            # Step 4: Re-apply volume constraint after all other constraints
+            # This ensures volume constraint takes precedence if there's a conflict
+            perturbed_images = volume_constraint(perturbed_images, test_data, 2, start_idx, end_idx)
+
+        return perturbed_images
+
+    max_test_size = testX_CNN.shape[0]
+    num_batches = max_test_size // batch_size
+
+    for epsilon in epsilon_values:
+        print(f"\nAnalyzing epsilon: {epsilon}")
+
+        pgd_predictions = []
+        fgsm_predictions = []
+
+        for i in range(num_batches):
+            start_idx = i * batch_size
+            end_idx = min((i + 1) * batch_size, max_test_size)
+
+            try:
+                # Prepare batch data
+                batch_images = data_set(testX_CNN, start_idx, end_idx)
+                batch_images = volume_constraint(batch_images, testX_CNN, 2, start_idx, end_idx)
+                batch_labels = testY_CNN[start_idx:end_idx]
+
+                # Generate adversarial examples
+                perturbed_images_pgd = pgd_attack(batch_images, batch_labels, epsilon, testX_CNN, start_idx, end_idx)
+                perturbed_images_fgsm = fgsm_attack(batch_images, batch_labels, epsilon)
+
+                if perturbed_images_pgd is not None and perturbed_images_fgsm is not None:
+                    # Calculate perturbation volumes
+                    pgd_volume = np.mean(np.linalg.norm(
+                        (perturbed_images_pgd - batch_images).numpy().reshape(batch_images.shape[0], -1),
+                        axis=1
+                    ))
+                    fgsm_volume = np.mean(np.linalg.norm(
+                        (perturbed_images_fgsm - batch_images).numpy().reshape(batch_images.shape[0], -1),
+                        axis=1
+                    ))
+                    print(f"Batch {i+1}/{num_batches} - PGD volume: {pgd_volume:.6f}, FGSM volume: {fgsm_volume:.6f}")
+
+                    # Get predictions
+                    pgd_pred = get_model_predictions(perturbed_images_pgd)
+                    fgsm_pred = get_model_predictions(perturbed_images_fgsm)
+
+                    if pgd_pred is not None:
+                        pgd_predictions.append(pgd_pred)
+                    if fgsm_pred is not None:
+                        fgsm_predictions.append(fgsm_pred)
+
+            except Exception as e:
+                print(f"Error processing batch {i}: {str(e)}")
+                continue
+
+            tf.keras.backend.clear_session()
+
+        if pgd_predictions and fgsm_predictions:
+            pgd_predictions = np.vstack(pgd_predictions)
+            fgsm_predictions = np.vstack(fgsm_predictions)
+
+            # Process for each threshold
+            for threshold in thresholds:
+                # Process PGD results
+                pgd_result = implement_fi2010_strategy(
+                    predictions=pgd_predictions,
+                    dec_data=dec_test,
+                    prob_threshold=threshold
+                )
+                if pgd_result:
+                    pgd_result.update({
+                        'epsilon': epsilon,
+                        'threshold': threshold,
+                        'attack_type': 'PGD'
+                    })
+                    results_pgd.append(pgd_result)
+
+                # Process FGSM results
+                fgsm_result = implement_fi2010_strategy(
+                    predictions=fgsm_predictions,
+                    dec_data=dec_test,
+                    prob_threshold=threshold
+                )
+                if fgsm_result:
+                    fgsm_result.update({
+                        'epsilon': epsilon,
+                        'threshold': threshold,
+                        'attack_type': 'FGSM'
+                    })
+                    results_fgsm.append(fgsm_result)
+
+    # Create DataFrames
+    pgd_df = pd.DataFrame(results_pgd) if results_pgd else pd.DataFrame()
+    fgsm_df = pd.DataFrame(results_fgsm) if results_fgsm else pd.DataFrame()
+
+    # Display detailed summaries
+    if not pgd_df.empty:
+        print("\nPGD Attack Summary by Threshold:")
+        summary_pgd = pgd_df.groupby(['epsilon', 'threshold'])[
+            ['total_profit', 'num_trades', 'win_rate']
+        ].mean().round(4)
+
+        # Format the display
+        pd.set_option('display.float_format', lambda x: '%.4f' % x)
+        print("\nPGD Analysis Results:")
+        for eps in epsilon_values:
+            print(f"\nEpsilon: {eps}")
+            print(summary_pgd.loc[eps])
+
+    if not fgsm_df.empty:
+        print("\nFGSM Attack Summary by Threshold:")
+        summary_fgsm = fgsm_df.groupby(['epsilon', 'threshold'])[
+            ['total_profit', 'num_trades', 'win_rate']
+        ].mean().round(4)
+
+        print("\nFGSM Analysis Results:")
+        for eps in epsilon_values:
+            print(f"\nEpsilon: {eps}")
+            print(summary_fgsm.loc[eps])
+
+    return pgd_df, fgsm_df
+
+def implement_fi2010_strategy(predictions, dec_data, prob_threshold=0.5, k=4, alpha=0.001):
+    """Implementation of the FI-2010 trading strategy"""
+    ask_prices = dec_data[0, :]
+    bid_prices = dec_data[2, :]
+    mid_prices = (ask_prices + bid_prices) / 2
+
+    min_length = min(len(predictions), len(mid_prices) - k)
+    predictions = predictions[:min_length]
+    trades_info = []
+    budget = 100
+
+    for i in range(k, min_length):
+        m_plus = np.mean(mid_prices[i+1:i+k+1])
+        lt = (m_plus - mid_prices[i]) / mid_prices[i]
+
+        pred_class = np.argmax(predictions[i])
+        max_prob = np.max(predictions[i])
+
+        if max_prob > prob_threshold and pred_class != 1:
+            actual_direction = 1 if lt > alpha else (-1 if lt < -alpha else 0)
+            shares = budget / mid_prices[i]
+
+            if pred_class == 2:  # Long trade
+                cost = shares * mid_prices[i]
+                proceeds = shares * m_plus
+                profit = proceeds - cost
+                trades_info.append({
+                    'movement': 'up',
+                    'profit': profit,
+                    'correct': actual_direction == 1
+                })
+            elif pred_class == 0:  # Short trade
+                proceeds = shares * mid_prices[i]
+                cost = shares * m_plus
+                profit = proceeds - cost
+                trades_info.append({
+                    'movement': 'down',
+                    'profit': profit,
+                    'correct': actual_direction == -1
+                })
+
+    if trades_info:
+        trades_df = pd.DataFrame(trades_info)
+        return {
+            'threshold': prob_threshold,
+            'total_profit': trades_df['profit'].sum(),
+            'num_trades': len(trades_df),
+            'win_rate': trades_df['correct'].mean() * 100,
+            'avg_profit': trades_df['profit'].mean(),
+            'long_trades': len(trades_df[trades_df['movement'] == 'up']),
+            'short_trades': len(trades_df[trades_df['movement'] == 'down'])
+        }
+    return None
+
+epsilon_values = [0.01, 0.1, 1, 10]
+results_pgd, results_fgsm = run_adversarial_trading_analysis(
+    model=cnn_model,
+    testX_CNN=testX_CNN,
+    testY_CNN=testY_CNN,
+    dec_test=dec_test,
+    epsilon_values=epsilon_values,
+    batch_size=2000
+)
+

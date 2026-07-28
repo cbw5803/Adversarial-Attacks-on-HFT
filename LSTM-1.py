@@ -264,7 +264,7 @@ print("Getting predictions...")
 train_predictions = lstm1.predict(testX_CNN)
 
 # First define our strategy function
-def implement_fi2010_strategy(predictions, dec_data, budget=100, prob_threshold=0.8, k=4, alpha=0.002):
+def implement_fi2010_strategy(predictions, dec_data, budget=100, prob_threshold=0.5, k=4, alpha=0.001):
     # Get average ask and bid prices
     ask_prices = dec_data[0, :]
     bid_prices = dec_data[2, :]

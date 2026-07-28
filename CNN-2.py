@@ -2034,7 +2034,7 @@ def implement_fi2010_strategy(predictions, dec_data, prob_threshold=0.5, k=4, al
         }
     return None
 
-epsilon_values = [0.1, 1, 10]
+epsilon_values = [0.01, 0.1, 1, 10]
 results_pgd, results_fgsm = run_adversarial_trading_analysis(
     model=model,
     testX_CNN=testX_CNN,
@@ -2330,7 +2330,7 @@ def implement_fi2010_strategy(predictions, dec_data, prob_threshold=0.5, k=4, al
         }
     return None
 
-epsilon_values = [0.000001, 0.00001, 0.0001, 0.001,0.01]
+epsilon_values = [0.000001, 0.00001, 0.0001, 0.001]
 results_pgd, results_fgsm = run_adversarial_trading_analysis(
     model=model,
     testX_CNN=testX_CNN,
