@@ -29,11 +29,11 @@ from keras import utils
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, accuracy_score
 
-# set random seeds
+RANDOM_SEED = 0
 
-# removed the import statement for set_session from tensorflow.compat.v1.keras.backend
-np.random.seed(1)
-tf.random.set_seed(2)
+# set random seeds
+np.random.seed(RANDOM_SEED)
+tf.random.set_seed(RANDOM_SEED)
 
 # limit gpu usage for keras with tensorflow 1
 # config = tf.compat.v1.ConfigProto()
@@ -153,18 +153,23 @@ cnn_model.compile(optimizer='adam', loss=tf.keras.losses.CategoricalCrossentropy
 
 cnn_model.summary()
 
-# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 76486, "status": "ok", "timestamp": 1741295868224, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}, "user_tz": 300} id="E1Xv2KQVceSs" outputId="489dd397-9716-4bd2-a6cc-8ae9e6672ef3"
+# %% id="E1Xv2KQVceSs"
 # %%time
+checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/CNN_1_{RANDOM_SEED}.weights.h5'
 
-model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-    filepath='./cnn1.weights.h5', # Added '.weights.h5' to the filepath
-    save_weights_only=True,
-    monitor='val_loss',
-    mode='auto',
-    save_best_only=True)
-
-cnn_model.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
-            epochs=10, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
+if os.path.exists(checkpoint_filepath):
+    cnn_model.load_weights(checkpoint_filepath)
+    print("Loaded saved weights.")
+else:
+    print("No saved weights found. Starting training from scratch.")
+    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        save_weights_only=True,
+        monitor='val_loss',
+        mode='auto',
+        save_best_only=True)
+    cnn_model.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
+                 epochs=10, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
 # %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 12539, "status": "ok", "timestamp": 1741295890147, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}, "user_tz": 300} id="GXnnVsHwct4e" outputId="4da500b0-bfc8-4cbc-a915-5edc75ac8814"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(cnn_model.predict(testX_CNN), axis=1)))

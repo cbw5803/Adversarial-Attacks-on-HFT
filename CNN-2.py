@@ -29,11 +29,11 @@ from keras import utils
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, accuracy_score
 
-# set random seeds
+RANDOM_SEED = 0
 
-# removed the import statement for set_session from tensorflow.compat.v1.keras.backend
-np.random.seed(1)
-tf.random.set_seed(2)
+# set random seeds
+np.random.seed(RANDOM_SEED)
+tf.random.set_seed(RANDOM_SEED)
 
 # limit gpu usage for keras with tensorflow 1
 # config = tf.compat.v1.ConfigProto()
@@ -186,7 +186,7 @@ cnn2.summary()
 
 # %% id="XiEwO6NKxZqk"
 # %%time
-checkpoint_filepath = '/content/drive/MyDrive/LOBCNN/models/weights_best_CNN2.weights.h5'
+checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/CNN_2_{RANDOM_SEED}.weights.h5'
 
 if os.path.exists(checkpoint_filepath):
     cnn2.load_weights(checkpoint_filepath)

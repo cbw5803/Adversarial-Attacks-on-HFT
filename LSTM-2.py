@@ -29,11 +29,11 @@ from keras import utils
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, accuracy_score
 
-# set random seeds
+RANDOM_SEED = 0
 
-# removed the import statement for set_session from tensorflow.compat.v1.keras.backend
-np.random.seed(1)
-tf.random.set_seed(2)
+# set random seeds
+np.random.seed(RANDOM_SEED)
+tf.random.set_seed(RANDOM_SEED)
 
 # limit gpu usage for keras with tensorflow 1
 # config = tf.compat.v1.ConfigProto()
@@ -155,10 +155,23 @@ def create_lstm2(T, NF, number_of_lstm):
 lstm2 = create_lstm2(trainX_CNN.shape[1], trainX_CNN.shape[2], 64)
 lstm2.summary()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="1BSzrq4RWe1h" executionInfo={"status": "ok", "timestamp": 1741409900775, "user_tz": 300, "elapsed": 2483159, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="51aec5e9-7922-46ae-9e96-c4a5d02e90b9"
+# %% id="1BSzrq4RWe1h"
 # %%time
+checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/LSTM_2_{RANDOM_SEED}.weights.h5'
 
-lstm2.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),epochs=200, batch_size=128, verbose=1)
+if os.path.exists(checkpoint_filepath):
+    lstm2.load_weights(checkpoint_filepath)
+    print("Loaded saved weights.")
+else:
+    print("No saved weights found. Starting training from scratch.")
+    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        save_weights_only=True,
+        monitor='val_accuracy',
+        mode='auto',
+        save_best_only=True)
+    lstm2.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
+              epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="t2uRUXd8WiF3" executionInfo={"status": "ok", "timestamp": 1741063994993, "user_tz": 300, "elapsed": 16258, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="b94006e5-ea5c-45e3-ab2a-f1056d140b89"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(lstm2.predict(testX_CNN), axis=1)))

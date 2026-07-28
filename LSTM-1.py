@@ -29,11 +29,11 @@ from keras import utils
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, accuracy_score
 
-# set random seeds
+RANDOM_SEED = 0
 
-# removed the import statement for set_session from tensorflow.compat.v1.keras.backend
-np.random.seed(1)
-tf.random.set_seed(2)
+# set random seeds
+np.random.seed(RANDOM_SEED)
+tf.random.set_seed(RANDOM_SEED)
 
 # %% [markdown] id="0AAYumooZhIs"
 # ## Mounting Google Drive
@@ -163,9 +163,23 @@ def create_lstm1(T, NF, number_of_lstm):
 lstm1 = create_lstm1(trainX_CNN.shape[1], trainX_CNN.shape[2], n_hiddens)
 lstm1.summary()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="Ba-7l0kj913r" executionInfo={"status": "ok", "timestamp": 1741401747393, "user_tz": 300, "elapsed": 955232, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="39f02cd9-4b06-4603-957e-ae470ca1df01"
+# %% id="Ba-7l0kj913r"
 # %%time
-lstm1.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),epochs=50, batch_size=128, verbose=1)
+checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/LSTM_1_{RANDOM_SEED}.weights.h5'
+
+if os.path.exists(checkpoint_filepath):
+    lstm1.load_weights(checkpoint_filepath)
+    print("Loaded saved weights.")
+else:
+    print("No saved weights found. Starting training from scratch.")
+    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        save_weights_only=True,
+        monitor='val_accuracy',
+        mode='auto',
+        save_best_only=True)
+    lstm1.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
+              epochs=50, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="3YeR0lH39-Oi" executionInfo={"status": "ok", "timestamp": 1741056075609, "user_tz": 300, "elapsed": 21576, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="b9b86a3a-cddd-4dd4-b086-60cb2db9abe7"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(lstm1.predict(testX_CNN), axis=1)))

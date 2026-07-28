@@ -29,11 +29,11 @@ from keras import utils
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, accuracy_score
 
-# set random seeds
+RANDOM_SEED = 0
 
-# removed the import statement for set_session from tensorflow.compat.v1.keras.backend
-np.random.seed(1)
-tf.random.set_seed(2)
+# set random seeds
+np.random.seed(RANDOM_SEED)
+tf.random.set_seed(RANDOM_SEED)
 
 # limit gpu usage for keras with tensorflow 1
 # config = tf.compat.v1.ConfigProto()
@@ -200,7 +200,7 @@ deeplob = create_deeplob(trainX_CNN.shape[1], trainX_CNN.shape[2], n_hiddens)
 deeplob.summary()
 
 # %% id="trnQ7AZIoWAh" colab={"base_uri": "https://localhost:8080/"} outputId="22be3357-b1a5-4ec1-b6d5-91b196ca9729"
-checkpoint_filepath = '/content/drive/MyDrive/LOBCNN/models/weights_best.weights.h5'
+checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/DeepLOB_{RANDOM_SEED}.weights.h5'
 
 model = create_deeplob(trainX_CNN.shape[1], trainX_CNN.shape[2], n_hiddens)  # Implement this function based on your model loading logic
 if os.path.exists(checkpoint_filepath):
