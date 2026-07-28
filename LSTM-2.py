@@ -581,6 +581,11 @@ avg_recall2 = {}
 # Define dictionaries to hold ROC AUC scores
 avg_roc_auc1 = {}
 avg_roc_auc2 = {}
+avg_accuracies3 = {}
+perturbed_volumes3 = {}
+avg_precision3 = {}
+avg_recall3 = {}
+avg_roc_auc3 = {}
 
 
 def adversarial_pattern(image, label):
@@ -639,6 +644,20 @@ def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
         perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
 
     return perturbed_images
+
+def random_noise_attack(images, epsilon, trainX_CNN, start_idx, end_idx):
+    """Random noise baseline attack: uniform noise within [-epsilon, epsilon]."""
+    noise = tf.random.uniform(tf.shape(images), -epsilon, epsilon)
+    noise = noise.numpy()
+    noise[:, :99, :, :] = 0
+    noise[:, 99:, ::2, :] = 0
+    noise = tf.convert_to_tensor(noise, dtype=tf.float32)
+    perturbed_images = images + noise
+    perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
+    # Apply volume constraint
+    perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
+    return perturbed_images
+
 
 def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
     images = images.numpy()
@@ -720,16 +739,20 @@ for epsilon in epsilon_values:
     print(f"Epsilon value: {epsilon}")
     total_accuracy1 = 0.0
     total_accuracy2 = 0.0
+    total_accuracy3 = 0.0
     total_perturbation1 = 0.0
     total_perturbation2 = 0.0
+    total_perturbation3 = 0.0
     all_true_labels = []
     all_predicted_labels1 = []
     all_predicted_labels2 = []
+    all_predicted_labels3 = []
 
     # For this epsilon, collect all prediction probabilities
     epsilon_true_labels_onehot = []
     epsilon_pred_probs_pgd = []
     epsilon_pred_probs_fgsm = []
+    epsilon_pred_probs_random = []
 
     for i in range(num_batches):
         start_idx = i * batch_size
@@ -741,51 +764,78 @@ for epsilon in epsilon_values:
 
         perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon, trainX_CNN, start_idx, end_idx)
         perturbed_images2 = fgsm_attack(batch_images, batch_labels, epsilon)
+        perturbed_images3 = random_noise_attack(batch_images, epsilon, trainX_CNN, start_idx, end_idx)
 
         perturbation1 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images1.numpy())
         perturbation2 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images2.numpy())
+        perturbation3 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images3.numpy())
 
         total_perturbation1 += perturbation1
         total_perturbation2 += perturbation2
+        total_perturbation3 += perturbation3
 
         X_perturbed1 = perturbed_images1.numpy()
         X_perturbed2 = perturbed_images2.numpy()
+        X_perturbed3 = perturbed_images3.numpy()
 
         # Get raw probabilities for ROC curve
         adversarial_probs1 = model.predict(X_perturbed1)
         adversarial_probs2 = model.predict(X_perturbed2)
+        adversarial_probs3 = model.predict(X_perturbed3)
 
         # Get predicted labels
         adversarial_predictions1 = np.argmax(adversarial_probs1, axis=1)
         adversarial_predictions2 = np.argmax(adversarial_probs2, axis=1)
+        adversarial_predictions3 = np.argmax(adversarial_probs3, axis=1)
 
         # Collect data for ROC curve
         epsilon_true_labels_onehot.append(batch_labels)
         epsilon_pred_probs_pgd.append(adversarial_probs1)
         epsilon_pred_probs_fgsm.append(adversarial_probs2)
+        epsilon_pred_probs_random.append(adversarial_probs3)
 
         # Append results for precision and recall calculation
         true_labels_batch = np.argmax(batch_labels, axis=1)
         all_true_labels.extend(true_labels_batch)
         all_predicted_labels1.extend(adversarial_predictions1)
         all_predicted_labels2.extend(adversarial_predictions2)
+        all_predicted_labels3.extend(adversarial_predictions3)
 
         accuracy1 = accuracy_score(true_labels_batch, adversarial_predictions1)
         accuracy2 = accuracy_score(true_labels_batch, adversarial_predictions2)
         total_accuracy1 += accuracy1
         total_accuracy2 += accuracy2
+        accuracy3 = accuracy_score(true_labels_batch, adversarial_predictions3)
+        total_accuracy3 += accuracy3
 
     average_accuracy1 = total_accuracy1 / num_batches
     average_accuracy2 = total_accuracy2 / num_batches
+    average_accuracy3 = total_accuracy3 / num_batches
     avg_perturbation1 = total_perturbation1 / num_batches
     avg_perturbation2 = total_perturbation2 / num_batches
+    avg_perturbation3 = total_perturbation3 / num_batches
 
     # Concatenate all batches for this epsilon
     epsilon_true_labels_onehot = np.vstack(epsilon_true_labels_onehot)
     epsilon_pred_probs_pgd = np.vstack(epsilon_pred_probs_pgd)
     epsilon_pred_probs_fgsm = np.vstack(epsilon_pred_probs_fgsm)
+    epsilon_pred_probs_random = np.vstack(epsilon_pred_probs_random)
 
     # Calculate and plot ROC curve
+
+    # Compute macro-average ROC AUC for Random Noise
+    fpr3 = dict()
+    tpr3 = dict()
+    roc_auc3_per_class = dict()
+    for i in range(3):
+        fpr3[i], tpr3[i], _ = roc_curve(epsilon_true_labels_onehot[:, i], epsilon_pred_probs_random[:, i])
+        roc_auc3_per_class[i] = auc(fpr3[i], tpr3[i])
+    all_fpr3 = np.unique(np.concatenate([fpr3[i] for i in range(3)]))
+    mean_tpr3 = np.zeros_like(all_fpr3)
+    for i in range(3):
+        mean_tpr3 += np.interp(all_fpr3, fpr3[i], tpr3[i])
+    mean_tpr3 /= 3
+    roc_auc3 = auc(all_fpr3, mean_tpr3)
     roc_auc1, roc_auc2 = plot_roc_curve(
         epsilon_true_labels_onehot,
         epsilon_pred_probs_pgd,
@@ -795,40 +845,53 @@ for epsilon in epsilon_values:
 
     avg_roc_auc1[epsilon] = roc_auc1
     avg_roc_auc2[epsilon] = roc_auc2
+    avg_roc_auc3[epsilon] = roc_auc3
 
     # Calculate precision and recall
     precision1 = precision_score(all_true_labels, all_predicted_labels1, average='macro')
     recall1 = recall_score(all_true_labels, all_predicted_labels1, average='macro')
     precision2 = precision_score(all_true_labels, all_predicted_labels2, average='macro')
     recall2 = recall_score(all_true_labels, all_predicted_labels2, average='macro')
+    precision3 = precision_score(all_true_labels, all_predicted_labels3, average='macro')
+    recall3 = recall_score(all_true_labels, all_predicted_labels3, average='macro')
 
     avg_precision1[epsilon] = precision1
     avg_recall1[epsilon] = recall1
     avg_precision2[epsilon] = precision2
     avg_recall2[epsilon] = recall2
+    avg_precision3[epsilon] = precision3
+    avg_recall3[epsilon] = recall3
 
     # Generate classification reports
     pgd_report = classification_report(all_true_labels, all_predicted_labels1, output_dict=True)
     fgsm_report = classification_report(all_true_labels, all_predicted_labels2, output_dict=True)
+    random_report = classification_report(all_true_labels, all_predicted_labels3, output_dict=True)
 
     print(f"Average accuracy of PGD attack for epsilon value {epsilon}: {average_accuracy1}")
     avg_accuracies1[epsilon] = average_accuracy1
     print(f"Average accuracy of FGSM attack for epsilon value {epsilon}: {average_accuracy2}")
     avg_accuracies2[epsilon] = average_accuracy2
+    avg_accuracies3[epsilon] = average_accuracy3
+    print(f"Average accuracy of Random Noise attack for epsilon value {epsilon}: {average_accuracy3}")
     print(f"Average perturbation volume for PGD attack with epsilon {epsilon}: {avg_perturbation1}")
     perturbed_volumes1[epsilon] = avg_perturbation1
     print(f"Average perturbation volume for FGSM attack with epsilon {epsilon}: {avg_perturbation2}")
     perturbed_volumes2[epsilon] = avg_perturbation2
+    perturbed_volumes3[epsilon] = avg_perturbation3
+    print(f"Average perturbation volume for Random Noise attack with epsilon {epsilon}: {avg_perturbation3}")
 
     # Print precision and recall
     print(f"Average precision of PGD attack for epsilon value {epsilon}: {precision1}")
     print(f"Average recall of PGD attack for epsilon value {epsilon}: {recall1}")
     print(f"Average precision of FGSM attack for epsilon value {epsilon}: {precision2}")
     print(f"Average recall of FGSM attack for epsilon value {epsilon}: {recall2}")
+    print(f"Average precision of Random Noise attack for epsilon value {epsilon}: {precision3}")
+    print(f"Average recall of Random Noise attack for epsilon value {epsilon}: {recall3}")
 
     # Print ROC AUC
     print(f"ROC AUC of PGD attack for epsilon value {epsilon}: {roc_auc1}")
     print(f"ROC AUC of FGSM attack for epsilon value {epsilon}: {roc_auc2}")
+    print(f"ROC AUC of Random Noise attack for epsilon value {epsilon}: {roc_auc3}")
 
     # Print classification reports
     print(f"\nClassification Report for PGD Attack (ε = {epsilon}):")
@@ -836,6 +899,8 @@ for epsilon in epsilon_values:
 
     print(f"\nClassification Report for FGSM Attack (ε = {epsilon}):")
     print(classification_report(all_true_labels, all_predicted_labels2))
+    print(f"\nClassification Report for Random Noise Attack (ε = {epsilon}):")
+    print(classification_report(all_true_labels, all_predicted_labels3))
 
     # Clean up
     tf.keras.backend.clear_session()
@@ -872,6 +937,11 @@ avg_recall2 = {}
 # Define dictionaries to hold ROC AUC scores
 avg_roc_auc1 = {}
 avg_roc_auc2 = {}
+avg_accuracies3 = {}
+perturbed_volumes3 = {}
+avg_precision3 = {}
+avg_recall3 = {}
+avg_roc_auc3 = {}
 
 
 def adversarial_pattern(image, label):
@@ -956,6 +1026,20 @@ def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
 
     return perturbed_images
 
+def random_noise_attack(images, epsilon, trainX_CNN, start_idx, end_idx):
+    """Random noise baseline attack: uniform noise within [-epsilon, epsilon]."""
+    noise = tf.random.uniform(tf.shape(images), -epsilon, epsilon)
+    noise = noise.numpy()
+    noise[:, :99, :, :] = 0
+    noise[:, 99:, ::2, :] = 0
+    noise = tf.convert_to_tensor(noise, dtype=tf.float32)
+    perturbed_images = images + noise
+    perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
+    # Apply volume constraint
+    perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
+    return perturbed_images
+
+
 def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
     images = images.numpy()
     slices = [slice(None)] * images.ndim
@@ -1036,16 +1120,20 @@ for epsilon in epsilon_values:
     print(f"Epsilon value: {epsilon}")
     total_accuracy1 = 0.0
     total_accuracy2 = 0.0
+    total_accuracy3 = 0.0
     total_perturbation1 = 0.0
     total_perturbation2 = 0.0
+    total_perturbation3 = 0.0
     all_true_labels = []
     all_predicted_labels1 = []
     all_predicted_labels2 = []
+    all_predicted_labels3 = []
 
     # For this epsilon, collect all prediction probabilities
     epsilon_true_labels_onehot = []
     epsilon_pred_probs_pgd = []
     epsilon_pred_probs_fgsm = []
+    epsilon_pred_probs_random = []
 
     for i in range(num_batches):
         start_idx = i * batch_size
@@ -1057,51 +1145,78 @@ for epsilon in epsilon_values:
 
         perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon, trainX_CNN, start_idx, end_idx)
         perturbed_images2 = fgsm_attack(batch_images, batch_labels, epsilon)
+        perturbed_images3 = random_noise_attack(batch_images, epsilon, trainX_CNN, start_idx, end_idx)
 
         perturbation1 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images1.numpy())
         perturbation2 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images2.numpy())
+        perturbation3 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images3.numpy())
 
         total_perturbation1 += perturbation1
         total_perturbation2 += perturbation2
+        total_perturbation3 += perturbation3
 
         X_perturbed1 = perturbed_images1.numpy()
         X_perturbed2 = perturbed_images2.numpy()
+        X_perturbed3 = perturbed_images3.numpy()
 
         # Get raw probabilities for ROC curve
         adversarial_probs1 = model.predict(X_perturbed1)
         adversarial_probs2 = model.predict(X_perturbed2)
+        adversarial_probs3 = model.predict(X_perturbed3)
 
         # Get predicted labels
         adversarial_predictions1 = np.argmax(adversarial_probs1, axis=1)
         adversarial_predictions2 = np.argmax(adversarial_probs2, axis=1)
+        adversarial_predictions3 = np.argmax(adversarial_probs3, axis=1)
 
         # Collect data for ROC curve
         epsilon_true_labels_onehot.append(batch_labels)
         epsilon_pred_probs_pgd.append(adversarial_probs1)
         epsilon_pred_probs_fgsm.append(adversarial_probs2)
+        epsilon_pred_probs_random.append(adversarial_probs3)
 
         # Append results for precision and recall calculation
         true_labels_batch = np.argmax(batch_labels, axis=1)
         all_true_labels.extend(true_labels_batch)
         all_predicted_labels1.extend(adversarial_predictions1)
         all_predicted_labels2.extend(adversarial_predictions2)
+        all_predicted_labels3.extend(adversarial_predictions3)
 
         accuracy1 = accuracy_score(true_labels_batch, adversarial_predictions1)
         accuracy2 = accuracy_score(true_labels_batch, adversarial_predictions2)
         total_accuracy1 += accuracy1
         total_accuracy2 += accuracy2
+        accuracy3 = accuracy_score(true_labels_batch, adversarial_predictions3)
+        total_accuracy3 += accuracy3
 
     average_accuracy1 = total_accuracy1 / num_batches
     average_accuracy2 = total_accuracy2 / num_batches
+    average_accuracy3 = total_accuracy3 / num_batches
     avg_perturbation1 = total_perturbation1 / num_batches
     avg_perturbation2 = total_perturbation2 / num_batches
+    avg_perturbation3 = total_perturbation3 / num_batches
 
     # Concatenate all batches for this epsilon
     epsilon_true_labels_onehot = np.vstack(epsilon_true_labels_onehot)
     epsilon_pred_probs_pgd = np.vstack(epsilon_pred_probs_pgd)
     epsilon_pred_probs_fgsm = np.vstack(epsilon_pred_probs_fgsm)
+    epsilon_pred_probs_random = np.vstack(epsilon_pred_probs_random)
 
     # Calculate and plot ROC curve
+
+    # Compute macro-average ROC AUC for Random Noise
+    fpr3 = dict()
+    tpr3 = dict()
+    roc_auc3_per_class = dict()
+    for i in range(3):
+        fpr3[i], tpr3[i], _ = roc_curve(epsilon_true_labels_onehot[:, i], epsilon_pred_probs_random[:, i])
+        roc_auc3_per_class[i] = auc(fpr3[i], tpr3[i])
+    all_fpr3 = np.unique(np.concatenate([fpr3[i] for i in range(3)]))
+    mean_tpr3 = np.zeros_like(all_fpr3)
+    for i in range(3):
+        mean_tpr3 += np.interp(all_fpr3, fpr3[i], tpr3[i])
+    mean_tpr3 /= 3
+    roc_auc3 = auc(all_fpr3, mean_tpr3)
     roc_auc1, roc_auc2 = plot_roc_curve(
         epsilon_true_labels_onehot,
         epsilon_pred_probs_pgd,
@@ -1111,40 +1226,53 @@ for epsilon in epsilon_values:
 
     avg_roc_auc1[epsilon] = roc_auc1
     avg_roc_auc2[epsilon] = roc_auc2
+    avg_roc_auc3[epsilon] = roc_auc3
 
     # Calculate precision and recall
     precision1 = precision_score(all_true_labels, all_predicted_labels1, average='macro')
     recall1 = recall_score(all_true_labels, all_predicted_labels1, average='macro')
     precision2 = precision_score(all_true_labels, all_predicted_labels2, average='macro')
     recall2 = recall_score(all_true_labels, all_predicted_labels2, average='macro')
+    precision3 = precision_score(all_true_labels, all_predicted_labels3, average='macro')
+    recall3 = recall_score(all_true_labels, all_predicted_labels3, average='macro')
 
     avg_precision1[epsilon] = precision1
     avg_recall1[epsilon] = recall1
     avg_precision2[epsilon] = precision2
     avg_recall2[epsilon] = recall2
+    avg_precision3[epsilon] = precision3
+    avg_recall3[epsilon] = recall3
 
     # Generate classification reports
     pgd_report = classification_report(all_true_labels, all_predicted_labels1, output_dict=True)
     fgsm_report = classification_report(all_true_labels, all_predicted_labels2, output_dict=True)
+    random_report = classification_report(all_true_labels, all_predicted_labels3, output_dict=True)
 
     print(f"Average accuracy of PGD attack for epsilon value {epsilon}: {average_accuracy1}")
     avg_accuracies1[epsilon] = average_accuracy1
     print(f"Average accuracy of FGSM attack for epsilon value {epsilon}: {average_accuracy2}")
     avg_accuracies2[epsilon] = average_accuracy2
+    avg_accuracies3[epsilon] = average_accuracy3
+    print(f"Average accuracy of Random Noise attack for epsilon value {epsilon}: {average_accuracy3}")
     print(f"Average perturbation volume for PGD attack with epsilon {epsilon}: {avg_perturbation1}")
     perturbed_volumes1[epsilon] = avg_perturbation1
     print(f"Average perturbation volume for FGSM attack with epsilon {epsilon}: {avg_perturbation2}")
     perturbed_volumes2[epsilon] = avg_perturbation2
+    perturbed_volumes3[epsilon] = avg_perturbation3
+    print(f"Average perturbation volume for Random Noise attack with epsilon {epsilon}: {avg_perturbation3}")
 
     # Print precision and recall
     print(f"Average precision of PGD attack for epsilon value {epsilon}: {precision1}")
     print(f"Average recall of PGD attack for epsilon value {epsilon}: {recall1}")
     print(f"Average precision of FGSM attack for epsilon value {epsilon}: {precision2}")
     print(f"Average recall of FGSM attack for epsilon value {epsilon}: {recall2}")
+    print(f"Average precision of Random Noise attack for epsilon value {epsilon}: {precision3}")
+    print(f"Average recall of Random Noise attack for epsilon value {epsilon}: {recall3}")
 
     # Print ROC AUC
     print(f"ROC AUC of PGD attack for epsilon value {epsilon}: {roc_auc1}")
     print(f"ROC AUC of FGSM attack for epsilon value {epsilon}: {roc_auc2}")
+    print(f"ROC AUC of Random Noise attack for epsilon value {epsilon}: {roc_auc3}")
 
     # Print classification reports
     print(f"\nClassification Report for PGD Attack (ε = {epsilon}):")
@@ -1152,6 +1280,8 @@ for epsilon in epsilon_values:
 
     print(f"\nClassification Report for FGSM Attack (ε = {epsilon}):")
     print(classification_report(all_true_labels, all_predicted_labels2))
+    print(f"\nClassification Report for Random Noise Attack (ε = {epsilon}):")
+    print(classification_report(all_true_labels, all_predicted_labels3))
 
     # Clean up
     tf.keras.backend.clear_session()
