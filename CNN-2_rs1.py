@@ -225,9 +225,10 @@ else:
              epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
 # %% id="9df16681"
-test_loss, test_acc = cnn2.evaluate(testX_CNN, testY_CNN)
+test_loss, test_acc, test_f1 = cnn2.evaluate(testX_CNN, testY_CNN)
 print(f"Test Loss: {test_loss}")
 print(f"Test Accuracy: {test_acc}")
+print(f"Test F1 Score: {test_f1}")
 
 # %% id="ac185897"
 # Step 2: Make predictions
@@ -259,9 +260,10 @@ plt.legend()
 plt.show()
 
 # %% id="9eb12f02"
-train_loss, train_acc = cnn2.evaluate(trainX_CNN, trainY_CNN)
+train_loss, train_acc,train_f1 = cnn2.evaluate(trainX_CNN, trainY_CNN)
 print(f"Test Loss: {train_loss}")
 print(f"Test Accuracy: {train_acc}")
+print(f"Train F1 Score: {train_f1}")
 
 # %% id="d7e26042"
 print(classification_report(np.argmax(trainY_CNN, axis=1), np.argmax(cnn2.predict(trainX_CNN), axis=1)))
