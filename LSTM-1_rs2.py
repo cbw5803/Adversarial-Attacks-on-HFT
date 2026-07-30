@@ -12,7 +12,7 @@
 #     name: python3
 # ---
 
-# %% id="gs4343FD9TCs"
+# %% id="b23d8f12"
 import pandas as pd
 import pickle
 import numpy as np
@@ -35,17 +35,17 @@ RANDOM_SEED = 2
 np.random.seed(RANDOM_SEED)
 tf.random.set_seed(RANDOM_SEED)
 
-# %% [markdown] id="0AAYumooZhIs"
+# %% [markdown] id="85b1ccb7"
 # ## Mounting Google Drive
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="FQxFEZ_T9jgN" executionInfo={"status": "ok", "timestamp": 1741400763093, "user_tz": 300, "elapsed": 18603, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="cdc33d3a-2210-4477-8c06-b4a29e40b6a0"
+# %% id="0c4cc5d8"
 from google.colab import drive
 drive.mount('/content/drive')
 
-# %% [markdown] id="hyDAb2_YZrLf"
+# %% [markdown] id="a0dc002a"
 # # Importing Dataset
 
-# %% id="b4TMutLy9lRr"
+# %% id="bc46dfac"
 import os
 import zipfile
 
@@ -77,11 +77,11 @@ else:
     print('Data already existed and is ready in Google Drive.')
 
 
-# %% [markdown] id="6W0-mM9haw5p"
+# %% [markdown] id="fd43e7df"
 # # Functions for pre-processing:
 #
 
-# %% id="5I6jYZck9rIr"
+# %% id="a88690db"
 def prepare_x(data):
     df1 = data[:40, :].T
     return np.array(df1)
@@ -131,7 +131,7 @@ def macro_f1(y_true, y_pred):
     return tf.reduce_mean(tf.stack(f1_scores))
 
 
-# %% id="ATO3-Jjt9tIL"
+# %% id="15946976"
 dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
 dec_val = dec_data[:, int(np.floor(dec_data.shape[1] * 0.8)):]
@@ -153,10 +153,10 @@ print(trainX_CNN.shape, trainY_CNN.shape)
 print(valX_CNN.shape, valY_CNN.shape)
 print(testX_CNN.shape, testY_CNN.shape)
 
-# %% [markdown] id="FQ2thb30luaY"
+# %% [markdown] id="55683e32"
 # # Model
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 340} id="ZSKUAG2L9vD6" executionInfo={"status": "ok", "timestamp": 1741400792160, "user_tz": 300, "elapsed": 1448, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="40480073-f203-460f-d173-9be386768363"
+# %% id="66bba7d8"
 
 from keras.models import Model
 from keras.layers import Input, LSTM, Dense, Dropout, Reshape
@@ -185,7 +185,7 @@ def create_lstm1(T, NF, number_of_lstm):
 lstm1 = create_lstm1(trainX_CNN.shape[1], trainX_CNN.shape[2], n_hiddens)
 lstm1.summary()
 
-# %% id="Ba-7l0kj913r"
+# %% id="6c611904"
 # %%time
 checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/LSTM_1_{RANDOM_SEED}.weights.h5'
 
@@ -203,13 +203,13 @@ else:
     lstm1.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
               epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="3YeR0lH39-Oi" executionInfo={"status": "ok", "timestamp": 1741056075609, "user_tz": 300, "elapsed": 21576, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="b9b86a3a-cddd-4dd4-b086-60cb2db9abe7"
+# %% id="cfd8ba9f"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(lstm1.predict(testX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="4uAqQgUdBxHp" executionInfo={"status": "ok", "timestamp": 1741056096102, "user_tz": 300, "elapsed": 20466, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="00c0a604-0ecf-489b-db80-54cd2446995a"
+# %% id="f79c8257"
 print(classification_report(np.argmax(testY_CNN, axis=1), np.argmax(lstm1.predict(testX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 490} id="xPbq30tiBzqI" executionInfo={"status": "ok", "timestamp": 1741056117071, "user_tz": 300, "elapsed": 20964, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="527c909b-3c4f-4aad-d987-988b0516bcea"
+# %% id="03a6a2b0"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -229,13 +229,13 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="OrCFr84jB1uQ" executionInfo={"status": "ok", "timestamp": 1741056182237, "user_tz": 300, "elapsed": 31609, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="12d38a4a-3080-473c-f30d-bebfb4c1ba6a"
+# %% id="356a29ca"
 print(accuracy_score(np.argmax(trainY_CNN, axis=1), np.argmax(lstm1.predict(trainX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="PqVCOaiRCItA" executionInfo={"status": "ok", "timestamp": 1741056212597, "user_tz": 300, "elapsed": 30096, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="c926c2be-6297-407f-fb9b-5e35488600fd"
+# %% id="b784b6e5"
 print(classification_report(np.argmax(trainY_CNN, axis=1), np.argmax(lstm1.predict(trainX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 490} id="yLy98QJsCPMG" executionInfo={"status": "ok", "timestamp": 1741056243439, "user_tz": 300, "elapsed": 30573, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="797774e0-e940-42be-f6b8-8c3733ef8669"
+# %% id="06c10e79"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -255,7 +255,7 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="jsqpKbEdCVRQ" executionInfo={"status": "ok", "timestamp": 1741056283277, "user_tz": 300, "elapsed": 38744, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="997cbcca-00f1-4332-a6ce-7e85a2bb72ff"
+# %% id="4541b7a7"
 """ TRADING STRATEGY BEFORE ATTACK ON TEST DATA"""
 import numpy as np
 import pandas as pd
@@ -383,7 +383,7 @@ if results:
     pd.set_option('display.float_format', lambda x: '{:.6f}'.format(x))
     print(results_df)
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="OqGgwNUhCfnv" executionInfo={"status": "ok", "timestamp": 1741056395034, "user_tz": 300, "elapsed": 56282, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="570570c8-ff70-41b8-9c7a-5b62c23e31d1"
+# %% id="10c80411"
 """ TRADING STRATEGY BEFORE ATTACK ON TRAIN DATA"""
 import numpy as np
 import pandas as pd
@@ -529,7 +529,7 @@ if results:
     print(results_df)
 
 
-# %% id="oZwkc3jJK-Gn"
+# %% id="2e647468"
 def calculate_perturbation_volume(original, perturbed):
     original_flat = original.reshape(original.shape[0], -1)
     perturbed_flat = perturbed.reshape(perturbed.shape[0], -1)
@@ -538,7 +538,7 @@ def calculate_perturbation_volume(original, perturbed):
     return avg_perturbation
 
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="apVhPYKsC2n2" executionInfo={"status": "ok", "timestamp": 1741403220363, "user_tz": 300, "elapsed": 1177450, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="69f1427b-0715-4821-95a6-a52285275550"
+# %% id="80cc48d0"
 """ ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
@@ -920,8 +920,8 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="9gduL8QXfSrE" executionInfo={"status": "ok", "timestamp": 1741403511984, "user_tz": 300, "elapsed": 291609, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="96481ff6-0028-49e4-fe3a-c23da423913d"
-""" ADVERSARIAL ATTACK ON TEST DATA ON 1 EPSILON VALUES"""
+# %% id="f06e17c7"
+""" ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import accuracy_score
@@ -1291,388 +1291,7 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="BgyUs8rdDPiH" executionInfo={"status": "ok", "timestamp": 1741404387328, "user_tz": 300, "elapsed": 875337, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="a9fdc203-de81-4582-a5f6-ff52e45ed030"
-""" ADVERSARIAL ATTACK ON TEST DATA ON 3 EPSILON VALUES"""
-import numpy as np
-import tensorflow as tf
-from sklearn.metrics import accuracy_score
-from tensorflow.keras.utils import to_categorical
-from sklearn.metrics import precision_score, recall_score, roc_curve, auc, classification_report
-import matplotlib.pyplot as plt
-
-# Define constants
-max_test_size = testX_CNN.shape[0]
-batch_size = 2000
-num_batches = max_test_size // batch_size
-epsilon_values = [0.01, 0.1, 1, 10]
-num_iterations = 5
-step_size = 0.01
-
-# Define your model
-model = lstm1
-
-avg_accuracies1 = {}
-avg_accuracies2 = {}
-perturbed_volumes1 = {}
-perturbed_volumes2 = {}
-# Define dictionaries to hold precision and recall
-avg_precision1 = {}
-avg_recall1 = {}
-avg_precision2 = {}
-avg_recall2 = {}
-# Define dictionaries to hold ROC AUC scores
-avg_roc_auc1 = {}
-avg_roc_auc2 = {}
-avg_accuracies3 = {}
-perturbed_volumes3 = {}
-avg_precision3 = {}
-avg_recall3 = {}
-avg_roc_auc3 = {}
-
-
-def adversarial_pattern(image, label):
-    image = tf.cast(image, tf.float32)
-    with tf.GradientTape() as tape:
-        tape.watch(image)
-        prediction = model(image)
-        loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(label, prediction)
-    gradient = tape.gradient(loss, image)
-    signed_grad = tf.sign(gradient)
-    return signed_grad
-
-def data_set(testX_CNN, start_idx, end_idx):
-    shifted_testX_CNN = tf.concat([testX_CNN[start_idx:end_idx, 1:100, :, :], testX_CNN[start_idx:end_idx, 99:, :, :]], axis=1)
-    return shifted_testX_CNN
-
-def fgsm_attack(images, labels, epsilon):
-    with tf.GradientTape() as tape:
-        tape.watch(images)
-        predictions = model(images)
-        loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
-    gradient = tape.gradient(loss, images)
-    signed_grad = tf.sign(gradient)
-
-    signed_masked = signed_grad.numpy()
-    signed_masked[:, :99, :, :] = 0
-    signed_masked[:, 99:, ::2, :] = 0
-    signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-    perturbed_images = images + epsilon * signed_masked
-    perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-    return perturbed_images
-
-def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
-    perturbed_images = tf.identity(images)
-
-    for _ in range(num_iterations):
-        # Gradient step
-        with tf.GradientTape() as tape:
-            tape.watch(perturbed_images)
-            predictions = model(perturbed_images)
-            loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
-        gradient = tape.gradient(loss, perturbed_images)
-        signed_grad = tf.sign(gradient)
-
-        # Apply masking to gradient
-        signed_masked = signed_grad.numpy()
-        signed_masked[:, :99, :, :] = 0
-        signed_masked[:, 99:, ::2, :] = 0
-        signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-        # Apply gradient step
-        perturbed_images = perturbed_images + step_size * signed_masked
-
-        # Step 1: Apply volume constraint
-        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-
-        # Step 2: Apply L2 norm constraint (projection step)
-        delta = perturbed_images - images  # Calculate current perturbation
-
-        # Reshape to flatten all dimensions except batch
-        delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
-
-        # Calculate L2 norm on the flattened dimensions
-        norm = tf.norm(delta_flat, axis=1, keepdims=True)
-
-        # Reshape norm for broadcasting
-        norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
-
-        # Scale perturbation
-        scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
-        delta = delta * scaling
-
-        perturbed_images = images + delta  # Apply constrained perturbation
-
-        # Step 3: Apply clipping to valid range [0,1]
-        perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-
-        # Step 4: Re-apply volume constraint after all other constraints
-        # This ensures volume constraint takes precedence if there's a conflict
-        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-
-    return perturbed_images
-
-def random_noise_attack(images, epsilon, trainX_CNN, start_idx, end_idx):
-    """Random noise baseline attack: uniform noise within [-epsilon, epsilon]."""
-    noise = tf.random.uniform(tf.shape(images), -epsilon, epsilon)
-    noise = noise.numpy()
-    noise[:, :99, :, :] = 0
-    noise[:, 99:, ::2, :] = 0
-    noise = tf.convert_to_tensor(noise, dtype=tf.float32)
-    perturbed_images = images + noise
-    perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-    # Apply volume constraint
-    perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-    return perturbed_images
-
-
-def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
-    images = images.numpy()
-    slices = [slice(None)] * images.ndim
-    testX_CNN = testX_CNN[start_idx:end_idx]
-    for idx in range(images.shape[dimension]):
-        slices[dimension] = idx
-        images[tuple(slices)] = np.maximum(images[tuple(slices)], testX_CNN[tuple(slices)])
-    images = tf.convert_to_tensor(images, dtype=tf.float32)
-    return images
-
-def plot_roc_curve(y_true, y_score1, y_score2, epsilon):
-    """
-    Plot ROC curve for both attacks at a specific epsilon value
-    """
-    # Get number of classes
-    n_classes = y_score1.shape[1]
-
-    # Compute ROC curve and ROC area for each class for PGD
-    fpr1 = dict()
-    tpr1 = dict()
-    roc_auc1 = dict()
-    for i in range(n_classes):
-        fpr1[i], tpr1[i], _ = roc_curve(y_true[:, i], y_score1[:, i])
-        roc_auc1[i] = auc(fpr1[i], tpr1[i])
-
-    # Compute ROC curve and ROC area for each class for FGSM
-    fpr2 = dict()
-    tpr2 = dict()
-    roc_auc2 = dict()
-    for i in range(n_classes):
-        fpr2[i], tpr2[i], _ = roc_curve(y_true[:, i], y_score2[:, i])
-        roc_auc2[i] = auc(fpr2[i], tpr2[i])
-
-    # Calculate macro average ROC curve and ROC area
-    all_fpr1 = np.unique(np.concatenate([fpr1[i] for i in range(n_classes)]))
-    all_fpr2 = np.unique(np.concatenate([fpr2[i] for i in range(n_classes)]))
-
-    mean_tpr1 = np.zeros_like(all_fpr1)
-    mean_tpr2 = np.zeros_like(all_fpr2)
-    for i in range(n_classes):
-        mean_tpr1 += np.interp(all_fpr1, fpr1[i], tpr1[i])
-        mean_tpr2 += np.interp(all_fpr2, fpr2[i], tpr2[i])
-
-    mean_tpr1 /= n_classes
-    mean_tpr2 /= n_classes
-
-    macro_roc_auc1 = auc(all_fpr1, mean_tpr1)
-    macro_roc_auc2 = auc(all_fpr2, mean_tpr2)
-
-    # Plot ROC curve only as per the requirement
-    plt.figure(figsize=(10, 8))
-    plt.plot(all_fpr1, mean_tpr1, label=f'PGD Attack - Macro-average ROC (AUC = {macro_roc_auc1:.2f})',
-             color='blue', linestyle='solid', linewidth=2)
-    plt.plot(all_fpr2, mean_tpr2, label=f'FGSM Attack - Macro-average ROC (AUC = {macro_roc_auc2:.2f})',
-             color='red', linestyle='dashed', linewidth=2)
-
-    plt.plot([0, 1], [0, 1], 'k--', lw=2)
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title(f'ROC Curve for PGD and FGSM Attacks with ε = {epsilon}')
-    plt.legend(loc="lower right")
-    plt.grid(True, linestyle='--', alpha=0.7)
-
-    # Save the figure
-    plt.savefig(f'roc_curve_epsilon_{epsilon}.png', dpi=300, bbox_inches='tight')
-    plt.close()
-
-    return macro_roc_auc1, macro_roc_auc2
-
-# Lists to store all prediction probabilities and true labels for ROC curves
-all_true_labels_onehot = []
-all_pred_probs_pgd = []
-all_pred_probs_fgsm = []
-
-for epsilon in epsilon_values:
-    print(f"Epsilon value: {epsilon}")
-    total_accuracy1 = 0.0
-    total_accuracy2 = 0.0
-    total_accuracy3 = 0.0
-    total_perturbation1 = 0.0
-    total_perturbation2 = 0.0
-    total_perturbation3 = 0.0
-    all_true_labels = []
-    all_predicted_labels1 = []
-    all_predicted_labels2 = []
-    all_predicted_labels3 = []
-
-    # For this epsilon, collect all prediction probabilities
-    epsilon_true_labels_onehot = []
-    epsilon_pred_probs_pgd = []
-    epsilon_pred_probs_fgsm = []
-    epsilon_pred_probs_random = []
-
-    for i in range(num_batches):
-        start_idx = i * batch_size
-        end_idx = (i + 1) * batch_size
-
-        batch_images = data_set(testX_CNN, start_idx, end_idx)
-        batch_images = volume_constraint(batch_images, testX_CNN, 2, start_idx, end_idx)
-        batch_labels = testY_CNN[start_idx:end_idx]
-
-        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon, trainX_CNN, start_idx, end_idx)
-        perturbed_images2 = fgsm_attack(batch_images, batch_labels, epsilon)
-        perturbed_images3 = random_noise_attack(batch_images, epsilon, trainX_CNN, start_idx, end_idx)
-
-        perturbation1 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images1.numpy())
-        perturbation2 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images2.numpy())
-        perturbation3 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images3.numpy())
-
-        total_perturbation1 += perturbation1
-        total_perturbation2 += perturbation2
-        total_perturbation3 += perturbation3
-
-        X_perturbed1 = perturbed_images1.numpy()
-        X_perturbed2 = perturbed_images2.numpy()
-        X_perturbed3 = perturbed_images3.numpy()
-
-        # Get raw probabilities for ROC curve
-        adversarial_probs1 = model.predict(X_perturbed1)
-        adversarial_probs2 = model.predict(X_perturbed2)
-        adversarial_probs3 = model.predict(X_perturbed3)
-
-        # Get predicted labels
-        adversarial_predictions1 = np.argmax(adversarial_probs1, axis=1)
-        adversarial_predictions2 = np.argmax(adversarial_probs2, axis=1)
-        adversarial_predictions3 = np.argmax(adversarial_probs3, axis=1)
-
-        # Collect data for ROC curve
-        epsilon_true_labels_onehot.append(batch_labels)
-        epsilon_pred_probs_pgd.append(adversarial_probs1)
-        epsilon_pred_probs_fgsm.append(adversarial_probs2)
-        epsilon_pred_probs_random.append(adversarial_probs3)
-
-        # Append results for precision and recall calculation
-        true_labels_batch = np.argmax(batch_labels, axis=1)
-        all_true_labels.extend(true_labels_batch)
-        all_predicted_labels1.extend(adversarial_predictions1)
-        all_predicted_labels2.extend(adversarial_predictions2)
-        all_predicted_labels3.extend(adversarial_predictions3)
-
-        accuracy1 = accuracy_score(true_labels_batch, adversarial_predictions1)
-        accuracy2 = accuracy_score(true_labels_batch, adversarial_predictions2)
-        total_accuracy1 += accuracy1
-        total_accuracy2 += accuracy2
-        accuracy3 = accuracy_score(true_labels_batch, adversarial_predictions3)
-        total_accuracy3 += accuracy3
-
-    average_accuracy1 = total_accuracy1 / num_batches
-    average_accuracy2 = total_accuracy2 / num_batches
-    average_accuracy3 = total_accuracy3 / num_batches
-    avg_perturbation1 = total_perturbation1 / num_batches
-    avg_perturbation2 = total_perturbation2 / num_batches
-    avg_perturbation3 = total_perturbation3 / num_batches
-
-    # Concatenate all batches for this epsilon
-    epsilon_true_labels_onehot = np.vstack(epsilon_true_labels_onehot)
-    epsilon_pred_probs_pgd = np.vstack(epsilon_pred_probs_pgd)
-    epsilon_pred_probs_fgsm = np.vstack(epsilon_pred_probs_fgsm)
-    epsilon_pred_probs_random = np.vstack(epsilon_pred_probs_random)
-
-    # Calculate and plot ROC curve
-
-    # Compute macro-average ROC AUC for Random Noise
-    fpr3 = dict()
-    tpr3 = dict()
-    roc_auc3_per_class = dict()
-    for i in range(3):
-        fpr3[i], tpr3[i], _ = roc_curve(epsilon_true_labels_onehot[:, i], epsilon_pred_probs_random[:, i])
-        roc_auc3_per_class[i] = auc(fpr3[i], tpr3[i])
-    all_fpr3 = np.unique(np.concatenate([fpr3[i] for i in range(3)]))
-    mean_tpr3 = np.zeros_like(all_fpr3)
-    for i in range(3):
-        mean_tpr3 += np.interp(all_fpr3, fpr3[i], tpr3[i])
-    mean_tpr3 /= 3
-    roc_auc3 = auc(all_fpr3, mean_tpr3)
-    roc_auc1, roc_auc2 = plot_roc_curve(
-        epsilon_true_labels_onehot,
-        epsilon_pred_probs_pgd,
-        epsilon_pred_probs_fgsm,
-        epsilon
-    )
-
-    avg_roc_auc1[epsilon] = roc_auc1
-    avg_roc_auc2[epsilon] = roc_auc2
-    avg_roc_auc3[epsilon] = roc_auc3
-
-    # Calculate precision and recall
-    precision1 = precision_score(all_true_labels, all_predicted_labels1, average='macro')
-    recall1 = recall_score(all_true_labels, all_predicted_labels1, average='macro')
-    precision2 = precision_score(all_true_labels, all_predicted_labels2, average='macro')
-    recall2 = recall_score(all_true_labels, all_predicted_labels2, average='macro')
-    precision3 = precision_score(all_true_labels, all_predicted_labels3, average='macro')
-    recall3 = recall_score(all_true_labels, all_predicted_labels3, average='macro')
-
-    avg_precision1[epsilon] = precision1
-    avg_recall1[epsilon] = recall1
-    avg_precision2[epsilon] = precision2
-    avg_recall2[epsilon] = recall2
-    avg_precision3[epsilon] = precision3
-    avg_recall3[epsilon] = recall3
-
-    # Generate classification reports
-    pgd_report = classification_report(all_true_labels, all_predicted_labels1, output_dict=True)
-    fgsm_report = classification_report(all_true_labels, all_predicted_labels2, output_dict=True)
-    random_report = classification_report(all_true_labels, all_predicted_labels3, output_dict=True)
-
-    print(f"Average accuracy of PGD attack for epsilon value {epsilon}: {average_accuracy1}")
-    avg_accuracies1[epsilon] = average_accuracy1
-    print(f"Average accuracy of FGSM attack for epsilon value {epsilon}: {average_accuracy2}")
-    avg_accuracies2[epsilon] = average_accuracy2
-    avg_accuracies3[epsilon] = average_accuracy3
-    print(f"Average accuracy of Random Noise attack for epsilon value {epsilon}: {average_accuracy3}")
-    print(f"Average perturbation volume for PGD attack with epsilon {epsilon}: {avg_perturbation1}")
-    perturbed_volumes1[epsilon] = avg_perturbation1
-    print(f"Average perturbation volume for FGSM attack with epsilon {epsilon}: {avg_perturbation2}")
-    perturbed_volumes2[epsilon] = avg_perturbation2
-    perturbed_volumes3[epsilon] = avg_perturbation3
-    print(f"Average perturbation volume for Random Noise attack with epsilon {epsilon}: {avg_perturbation3}")
-
-    # Print precision and recall
-    print(f"Average precision of PGD attack for epsilon value {epsilon}: {precision1}")
-    print(f"Average recall of PGD attack for epsilon value {epsilon}: {recall1}")
-    print(f"Average precision of FGSM attack for epsilon value {epsilon}: {precision2}")
-    print(f"Average recall of FGSM attack for epsilon value {epsilon}: {recall2}")
-    print(f"Average precision of Random Noise attack for epsilon value {epsilon}: {precision3}")
-    print(f"Average recall of Random Noise attack for epsilon value {epsilon}: {recall3}")
-
-    # Print ROC AUC
-    print(f"ROC AUC of PGD attack for epsilon value {epsilon}: {roc_auc1}")
-    print(f"ROC AUC of FGSM attack for epsilon value {epsilon}: {roc_auc2}")
-    print(f"ROC AUC of Random Noise attack for epsilon value {epsilon}: {roc_auc3}")
-
-    # Print classification reports
-    print(f"\nClassification Report for PGD Attack (ε = {epsilon}):")
-    print(classification_report(all_true_labels, all_predicted_labels1))
-
-    print(f"\nClassification Report for FGSM Attack (ε = {epsilon}):")
-    print(classification_report(all_true_labels, all_predicted_labels2))
-    print(f"\nClassification Report for Random Noise Attack (ε = {epsilon}):")
-    print(classification_report(all_true_labels, all_predicted_labels3))
-
-    # Clean up
-    tf.keras.backend.clear_session()
-
-# %% colab={"base_uri": "https://localhost:8080/"} id="Jeh2-JpEOZr7" executionInfo={"status": "ok", "timestamp": 1741406114824, "user_tz": 300, "elapsed": 1060371, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="2ce9c7a8-035f-4a51-ed88-06bdb018c176"
+# %% id="b10b6e65"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -1972,7 +1591,7 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="_FQtf31IPDMN" executionInfo={"status": "ok", "timestamp": 1741407194214, "user_tz": 300, "elapsed": 1064315, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="92a6fb9a-25d8-43c6-efbb-7e39055fe197"
+# %% id="8a28da00"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -2246,4 +1865,4 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% id="3kymkYFQPci-"
+# %% id="45ce8a80"

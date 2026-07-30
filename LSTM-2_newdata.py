@@ -12,7 +12,7 @@
 #     name: python3
 # ---
 
-# %% id="wHga8P3MV2Nh" executionInfo={"status": "ok", "timestamp": 1741407380889, "user_tz": 300, "elapsed": 3991, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}}
+# %% id="e5367847"
 import pandas as pd
 import pickle
 import numpy as np
@@ -43,11 +43,11 @@ tf.random.set_seed(RANDOM_SEED)
 # If you need to use set_session, try this instead:
 # from tensorflow.python.keras.backend import set_session
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="P9yYeWZfWIxB" executionInfo={"status": "ok", "timestamp": 1741407395577, "user_tz": 300, "elapsed": 14683, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="4c8a9ff1-e4b0-4ac6-8385-43da49ea9ac9"
+# %% colab={"base_uri": "https://localhost:8080/"} id="4edd32df" outputId="c367de9a-9246-4523-bb8f-4a1f70315f41"
 from google.colab import drive
 drive.mount('/content/drive')
 
-# %% id="a2mHh6jYWOH_"
+# %% id="9a5536c0" outputId="757d289a-e5c4-4f66-d565-89e06848c5bd" colab={"base_uri": "https://localhost:8080/"}
 import os
 import zipfile
 
@@ -79,7 +79,7 @@ else:
     print('Data already existed and is ready in Google Drive.')
 
 
-# %% id="psYqqTVDWSRu" executionInfo={"status": "ok", "timestamp": 1741407395717, "user_tz": 300, "elapsed": 62, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}}
+# %% id="669d3ba7"
 def prepare_x(data):
     df1 = data[:40, :].T
     return np.array(df1)
@@ -129,7 +129,7 @@ def macro_f1(y_true, y_pred):
     return tf.reduce_mean(tf.stack(f1_scores))
 
 
-# %% id="jx_NLoMwWTtY"
+# %% id="de4dbbee" outputId="abec9b74-ec4f-40ff-a2b1-9f364b24670f" colab={"base_uri": "https://localhost:8080/"}
 dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
 dec_val = dec_data[:, int(np.floor(dec_data.shape[1] * 0.8)):]
@@ -151,7 +151,7 @@ print(trainX_CNN.shape, trainY_CNN.shape)
 print(valX_CNN.shape, valY_CNN.shape)
 print(testX_CNN.shape, testY_CNN.shape)
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 272} id="NbujziZTWV6v" executionInfo={"status": "ok", "timestamp": 1741407417585, "user_tz": 300, "elapsed": 1556, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="b0f38de1-3f35-41e5-f459-4454e0ff5064"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 257} id="1401d297" outputId="0ab0e658-544f-4ac2-b0e6-5335b16e6d7c"
 from keras.models import Model
 from keras.layers import Input, LSTM, Dense, Dropout
 
@@ -177,7 +177,7 @@ def create_lstm2(T, NF, number_of_lstm):
 lstm2 = create_lstm2(trainX_CNN.shape[1], trainX_CNN.shape[2], 64)
 lstm2.summary()
 
-# %% id="1BSzrq4RWe1h"
+# %% id="652cbedf" outputId="18897377-7997-4624-9cc8-2611ebc95adc" colab={"base_uri": "https://localhost:8080/"}
 # %%time
 checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/LSTM_2_newdata_{RANDOM_SEED}.weights.h5'
 
@@ -195,10 +195,10 @@ else:
     lstm2.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
               epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="t2uRUXd8WiF3" executionInfo={"status": "ok", "timestamp": 1741063994993, "user_tz": 300, "elapsed": 16258, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="b94006e5-ea5c-45e3-ab2a-f1056d140b89"
+# %% colab={"base_uri": "https://localhost:8080/"} id="18f1b5cc" outputId="e35a6c54-21b7-4ee3-ee19-fd94fd58b8a0"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(lstm2.predict(testX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 490} id="9EELo5qde3X_" executionInfo={"status": "ok", "timestamp": 1741064010430, "user_tz": 300, "elapsed": 15432, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="c67c96b0-a856-4fdc-e267-da05498d70d5"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 489} id="27e50d1a" outputId="73d0f6c6-75b1-4dd1-ba38-f71496d70760"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -218,14 +218,14 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="136DOGSxe-oA" executionInfo={"status": "ok", "timestamp": 1741064025614, "user_tz": 300, "elapsed": 15179, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="cdd50fb9-c0e6-4dc4-e97a-33c750b83e8e"
+# %% colab={"base_uri": "https://localhost:8080/"} id="2a7ff0fc" outputId="d50a6687-3f3c-4cb6-f131-c3cf2aba220c"
 from sklearn.metrics import classification_report, accuracy_score
 print(classification_report(np.argmax(testY_CNN, axis=1), np.argmax(lstm2.predict(testX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="Kt4CZCxufIpF" executionInfo={"status": "ok", "timestamp": 1741064049421, "user_tz": 300, "elapsed": 23803, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="29f427f0-e9f6-47c8-f078-cd95caea397d"
+# %% colab={"base_uri": "https://localhost:8080/"} id="2992537d" outputId="448248d2-260c-4a12-95b8-01ba2ae257f4"
 print(accuracy_score(np.argmax(trainY_CNN, axis=1), np.argmax(lstm2.predict(trainX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 490} id="om5I3FeXfOHU" executionInfo={"status": "ok", "timestamp": 1741064071843, "user_tz": 300, "elapsed": 22418, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="c77f927f-8319-4971-cc53-ebf8a8c5eec9"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 489} id="695ce06a" outputId="aab238ce-7482-4c23-92c1-c76e0d82b338"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -245,11 +245,11 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="cT7BWO1HfUhq" executionInfo={"status": "ok", "timestamp": 1741064094424, "user_tz": 300, "elapsed": 22576, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="611471a2-1b58-4c5b-ea6c-c49ff4073608"
+# %% colab={"base_uri": "https://localhost:8080/"} id="2215a57e" outputId="52786eda-a9e0-4a88-d399-1c32fe9e0cdc"
 from sklearn.metrics import classification_report, accuracy_score
 print(classification_report(np.argmax(trainY_CNN, axis=1), np.argmax(lstm2.predict(trainX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="dLAjVjnSfaRh" executionInfo={"status": "ok", "timestamp": 1741064159021, "user_tz": 300, "elapsed": 33852, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="c6a55b81-0ea7-4ada-b822-afac634a2b7d"
+# %% colab={"base_uri": "https://localhost:8080/"} id="bd917cd2" outputId="ad42ca48-b201-489d-acf8-f90f0c61675e"
 """ TRADING STRATEGY BEFORE ATTACK ON TEST DATA"""
 import numpy as np
 import pandas as pd
@@ -394,7 +394,7 @@ if results:
     pd.set_option('display.float_format', lambda x: '{:.6f}'.format(x))
     print(results_df)
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="UVX19zmmgjqA" executionInfo={"status": "ok", "timestamp": 1741064221453, "user_tz": 300, "elapsed": 48446, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="63b016c0-7337-4e22-9480-b5758c4db5f7"
+# %% colab={"base_uri": "https://localhost:8080/"} id="ec570438" outputId="acb499e9-b0bb-4f05-a3c2-7f11e52f817f"
 """ TRADING STRATEGY BEFORE ATTACK ON TRAIN DATA"""
 import numpy as np
 import pandas as pd
@@ -540,7 +540,7 @@ if results:
     print(results_df)
 
 
-# %% id="d2tJwYHsgvVe" executionInfo={"status": "ok", "timestamp": 1741409900826, "user_tz": 300, "elapsed": 3, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}}
+# %% id="49e53c4b"
 def calculate_perturbation_volume(original, perturbed):
     original_flat = original.reshape(original.shape[0], -1)
     perturbed_flat = perturbed.reshape(perturbed.shape[0], -1)
@@ -549,7 +549,7 @@ def calculate_perturbation_volume(original, perturbed):
     return avg_perturbation
 
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="44gLbei-g84P" executionInfo={"status": "ok", "timestamp": 1741411190817, "user_tz": 300, "elapsed": 1023653, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="92f4f4d9-dc91-4059-f571-e8a36cd34806"
+# %% colab={"base_uri": "https://localhost:8080/"} id="324346fb" outputId="2a49acdf-61e3-4cb9-dfe9-41a9ac43b6dd"
 """ ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES (LOW)"""
 import numpy as np
 import tensorflow as tf
@@ -905,7 +905,7 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="2Z7Ibgz_hD7_" executionInfo={"status": "ok", "timestamp": 1741412223781, "user_tz": 300, "elapsed": 1032934, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="916392d4-95d2-4278-b37b-d5f1c85b36b7"
+# %% colab={"base_uri": "https://localhost:8080/"} id="3edec95a" outputId="4d3557cb-cab0-47f3-e81d-63ba1adcc9df"
 """ ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
@@ -1286,7 +1286,7 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="i8sbNQ0oizgX" executionInfo={"status": "ok", "timestamp": 1741412600210, "user_tz": 300, "elapsed": 376427, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="5ac93513-4fc3-4911-9ab7-345b438020c0"
+# %% colab={"base_uri": "https://localhost:8080/"} id="be5caa66" outputId="6fee28b1-9411-46ae-81de-7f4251a697c0"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -1567,7 +1567,7 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="ab2dgikxkhgN" executionInfo={"status": "ok", "timestamp": 1741412976433, "user_tz": 300, "elapsed": 376219, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="63e3865b-499f-4019-e7b5-ef6eaa7d7ad1"
+# %% colab={"base_uri": "https://localhost:8080/"} id="892ea64b" outputId="83bdd574-eb21-4662-b08c-8b099460be82"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -1848,4 +1848,4 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% id="x3DrBPxBmF-M"
+# %% id="99c97e18"

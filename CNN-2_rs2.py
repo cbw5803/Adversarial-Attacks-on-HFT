@@ -12,7 +12,7 @@
 #     name: python3
 # ---
 
-# %% id="Uf2O4akJw55s"
+# %% id="e695d9e9"
 import pandas as pd
 import pickle
 import numpy as np
@@ -43,11 +43,11 @@ tf.random.set_seed(RANDOM_SEED)
 # If you need to use set_session, try this instead:
 # from tensorflow.python.keras.backend import set_session
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="q6PQSjXoxJqn" executionInfo={"status": "ok", "timestamp": 1741392932020, "user_tz": 300, "elapsed": 22175, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="893da979-e5dd-4f6c-d1a7-4393d42eb9f2"
+# %% id="932d9248"
 from google.colab import drive
 drive.mount('/content/drive')
 
-# %% id="-rLMgziZxLuf"
+# %% id="3afafdd7"
 import os
 import zipfile
 
@@ -79,7 +79,7 @@ else:
     print('Data already existed and is ready in Google Drive.')
 
 
-# %% id="2pNXow5axOqG"
+# %% id="1fc08a37"
 def prepare_x(data):
     df1 = data[:40, :].T
     return np.array(df1)
@@ -129,7 +129,7 @@ def macro_f1(y_true, y_pred):
     return tf.reduce_mean(tf.stack(f1_scores))
 
 
-# %% id="ZO39HwpoxQSV"
+# %% id="c617ed68"
 dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
 dec_val = dec_data[:, int(np.floor(dec_data.shape[1] * 0.8)):]
@@ -152,7 +152,7 @@ print(valX_CNN.shape, valY_CNN.shape)
 print(testX_CNN.shape, testY_CNN.shape)
 
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 1000} id="ynjZibxxxR3E" executionInfo={"status": "ok", "timestamp": 1741392961827, "user_tz": 300, "elapsed": 1797, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="e13766d4-743b-4f46-f2d3-5e3597ff6314"
+# %% id="7769aec6"
 def create_cnn2(T, NF, number_of_lstm):
     input_lmd = Input(shape=(T, NF, 1))
 
@@ -206,7 +206,7 @@ def create_cnn2(T, NF, number_of_lstm):
 cnn2 = create_cnn2(trainX_CNN.shape[1], trainX_CNN.shape[2], n_hiddens)
 cnn2.summary()
 
-# %% id="XiEwO6NKxZqk"
+# %% id="fc93a305"
 # %%time
 checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/CNN_2_{RANDOM_SEED}.weights.h5'
 
@@ -224,21 +224,21 @@ else:
     cnn2.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
              epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="_zHr52WrxcdU" executionInfo={"status": "ok", "timestamp": 1741051798542, "user_tz": 300, "elapsed": 17449, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="b7d29ac5-66dc-4b9c-fcb8-4358c8d77ade"
+# %% id="f338b8f8"
 test_loss, test_acc = cnn2.evaluate(testX_CNN, testY_CNN)
 print(f"Test Loss: {test_loss}")
 print(f"Test Accuracy: {test_acc}")
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="nrPAHOXdxd90" executionInfo={"status": "ok", "timestamp": 1741051813127, "user_tz": 300, "elapsed": 14582, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="9a834949-30fa-4fab-c063-2f0798fb6d1e"
+# %% id="034746c8"
 # Step 2: Make predictions
 y_pred = cnn2.predict(testX_CNN)
 y_pred_classes = np.argmax(y_pred, axis=1)
 y_true = np.argmax(testY_CNN, axis=1)
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="YaF3HhimxgdW" executionInfo={"status": "ok", "timestamp": 1741051826348, "user_tz": 300, "elapsed": 13215, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="c42c98f9-476c-4c30-968e-5ef074c830e1"
+# %% id="7b3da3f1"
 print(classification_report(np.argmax(testY_CNN, axis=1), np.argmax(cnn2.predict(testX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 490} id="8G5z-gBjxiU-" executionInfo={"status": "ok", "timestamp": 1741051840213, "user_tz": 300, "elapsed": 13862, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="84295849-3018-453e-ec31-3c029a25a2da"
+# %% id="0d368e87"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -258,15 +258,15 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="FwoEtVwdxkUE" executionInfo={"status": "ok", "timestamp": 1741051886380, "user_tz": 300, "elapsed": 22541, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="253d85e9-f1c0-450e-c484-437bdc59623f"
+# %% id="050dc9b8"
 train_loss, train_acc = cnn2.evaluate(trainX_CNN, trainY_CNN)
 print(f"Test Loss: {train_loss}")
 print(f"Test Accuracy: {train_acc}")
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="2-Fsfx3IxyK0" executionInfo={"status": "ok", "timestamp": 1741051912412, "user_tz": 300, "elapsed": 21322, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="3cea4edb-0562-4c0b-9505-ebbf4d967413"
+# %% id="fe651643"
 print(classification_report(np.argmax(trainY_CNN, axis=1), np.argmax(cnn2.predict(trainX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 490} id="rF31FBpkx40k" executionInfo={"status": "ok", "timestamp": 1741051937023, "user_tz": 300, "elapsed": 19282, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="c5788561-f2da-4bd5-f1de-0ed57be90a20"
+# %% id="e3c8ba0a"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -286,10 +286,10 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% id="yylSSJNUENEE"
+# %% id="e097f074"
 "TRADING STRATEGY ON TEST BEFORE ATTACK"
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="tb5LQYQrx_VE" executionInfo={"status": "ok", "timestamp": 1741052020714, "user_tz": 300, "elapsed": 32136, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="cff6485b-f2e5-4798-e092-e11f3fd25100"
+# %% id="b8adaf4b"
 
 import numpy as np
 import pandas as pd
@@ -432,7 +432,7 @@ if results:
     pd.set_option('display.float_format', lambda x: '{:.6f}'.format(x))
     print(results_df)
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="pSycMAmNyQnj" executionInfo={"status": "ok", "timestamp": 1741052104328, "user_tz": 300, "elapsed": 48269, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="80018159-758f-4ef0-c96c-1546f530e419"
+# %% id="33da07cb"
 "TRADING STRATEGY ON TRAIN DATA BEFORE ATTACK"
 import numpy as np
 import pandas as pd
@@ -578,7 +578,7 @@ if results:
     print(results_df)
 
 
-# %% id="RT7ivbYkKb5I"
+# %% id="d35f56d6"
 def calculate_perturbation_volume(original, perturbed):
     original_flat = original.reshape(original.shape[0], -1)
     perturbed_flat = perturbed.reshape(perturbed.shape[0], -1)
@@ -587,8 +587,8 @@ def calculate_perturbation_volume(original, perturbed):
     return avg_perturbation
 
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="DkpLUwbTzDRr" executionInfo={"status": "ok", "timestamp": 1741393937734, "user_tz": 300, "elapsed": 852892, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="7de5f53d-1ce1-4830-eafd-78ddbe15fbc2"
-"""ADVERSARIAL ATTACK ON 3 EPSILON VALUES"""
+# %% id="b4179a68"
+"""ADVERSARIAL ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import accuracy_score
@@ -970,8 +970,8 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="LSLg44cVIALJ" executionInfo={"status": "ok", "timestamp": 1741394274921, "user_tz": 300, "elapsed": 279699, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="d8505a9b-47e5-475f-f997-b54443b20918"
-"""ADVERSARIAL ATTACK ON 1 EPSILON VALUES"""
+# %% id="08a0f6d2"
+"""ADVERSARIAL ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import accuracy_score
@@ -1358,7 +1358,7 @@ for epsilon in epsilon_values:
     tf.keras.backend.clear_session()
 
 
-# %% id="ydEzA2BeKtw3"
+# %% id="93747b20"
 def calculate_perturbation_volume(original, perturbed):
     original_flat = original.reshape(original.shape[0], -1)
     perturbed_flat = perturbed.reshape(perturbed.shape[0], -1)
@@ -1367,7 +1367,7 @@ def calculate_perturbation_volume(original, perturbed):
     return avg_perturbation
 
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="2Nm9V4PezPW7" executionInfo={"status": "ok", "timestamp": 1741395518020, "user_tz": 300, "elapsed": 1152916, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="31cb2369-cb2a-4f8b-f758-de6a41c876f0"
+# %% id="38fdbd02"
 """ADVERSARIAL ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
@@ -1748,7 +1748,7 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="NGh8oPlU08FC" executionInfo={"status": "ok", "timestamp": 1741396852918, "user_tz": 300, "elapsed": 1130504, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="c12c5706-dd7b-4335-8029-068dca136007"
+# %% id="5c90ed60"
 """TRADING STRATEGY AFTER ATTACK ON 3 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -2044,7 +2044,7 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="qc7XvKwP3hBY" executionInfo={"status": "ok", "timestamp": 1741399748907, "user_tz": 300, "elapsed": 1935928, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="32d07e42-42c2-4d5c-d3e5-46c3ad0a78a5"
+# %% id="c03e69bc"
 """TRADING STRATEGY AFTER ATTACK ON 3 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -2340,299 +2340,4 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="V9g2rwIeLaXF" executionInfo={"status": "ok", "timestamp": 1741396874116, "user_tz": 300, "elapsed": 20822, "user": {"displayName": "HFT ResearchPSU", "userId": "06323769305056854517"}} outputId="28ed10a5-20d8-47ce-a404-cda4f9c24791"
-# """TRADING STRATEGY AFTER ATTACK ON 1 EPSILON VALUES"""
-# import numpy as np
-# import pandas as pd
-# import tensorflow as tf
-
-# def run_adversarial_trading_analysis(model, testX_CNN, testY_CNN, dec_test, epsilon_values, batch_size=2000):
-#     """Run trading strategy analysis with adversarial attacks"""
-#     results_pgd = []
-#     results_fgsm = []
-#     thresholds = [0.85, 0.90, 0.95, 0.99]  # Explicit thresholds
-
-#     def data_set(testX_CNN, start_idx, end_idx):
-#         """Prepare the dataset by shifting"""
-#         shifted_testX_CNN = tf.concat([
-#             testX_CNN[start_idx:end_idx, 1:100, :, :],
-#             testX_CNN[start_idx:end_idx, 99:, :, :]
-#         ], axis=1)
-#         return tf.cast(shifted_testX_CNN, tf.float32)
-
-#     def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
-#         """Apply volume constraints to the images"""
-#         images = images.numpy()
-#         slices = [slice(None)] * images.ndim
-#         testX_CNN_batch = testX_CNN[start_idx:end_idx]
-#         for idx in range(images.shape[dimension]):
-#             slices[dimension] = idx
-#             images[tuple(slices)] = np.maximum(
-#                 images[tuple(slices)],
-#                 testX_CNN_batch[tuple(slices)]
-#             )
-#         return tf.convert_to_tensor(images, dtype=tf.float32)
-
-#     def get_model_predictions(perturbed_images):
-#         """Get model predictions with error handling"""
-#         try:
-#             with tf.device('/CPU:0'):
-#                 predictions = model(perturbed_images, training=False)
-#                 return predictions.numpy()
-#         except Exception as e:
-#             print(f"Error in model prediction: {str(e)}")
-#             return None
-
-#     def fgsm_attack(images, labels, epsilon):
-#         """Implement FGSM attack"""
-#         try:
-#             with tf.GradientTape() as tape:
-#                 tape.watch(images)
-#                 predictions = model(images, training=False)
-#                 loss = tf.keras.losses.CategoricalCrossentropy()(labels, predictions)
-
-#             gradient = tape.gradient(loss, images)
-#             signed_grad = tf.sign(gradient)
-
-#             signed_masked = signed_grad.numpy()
-#             signed_masked[:, :99, :, :] = 0
-#             signed_masked[:, 99:, ::2, :] = 0
-#             signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-#             perturbed_images = images + epsilon * signed_masked
-#             return tf.clip_by_value(perturbed_images, 0, 1)
-#         except Exception as e:
-#             print(f"Error in FGSM attack: {str(e)}")
-#             return None
-
-#     def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
-#       perturbed_images = tf.identity(images)
-
-#       for _ in range(num_iterations):
-#           # Gradient step
-#           with tf.GradientTape() as tape:
-#               tape.watch(perturbed_images)
-#               predictions = model(perturbed_images)
-#               loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
-#           gradient = tape.gradient(loss, perturbed_images)
-#           signed_grad = tf.sign(gradient)
-
-#           # Apply masking to gradient
-#           signed_masked = signed_grad.numpy()
-#           signed_masked[:, :99, :, :] = 0
-#           signed_masked[:, 99:, ::2, :] = 0
-#           signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-#           # Apply gradient step
-#           perturbed_images = perturbed_images + step_size * signed_masked
-
-#           # Step 1: Apply volume constraint
-#           perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-
-#           # Step 2: Apply L2 norm constraint (projection step)
-#           delta = perturbed_images - images  # Calculate current perturbation
-
-#           # Reshape to flatten all dimensions except batch
-#           delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
-
-#           # Calculate L2 norm on the flattened dimensions
-#           norm = tf.norm(delta_flat, axis=1, keepdims=True)
-
-#           # Reshape norm for broadcasting
-#           norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
-
-#           # Scale perturbation
-#           scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
-#           delta = delta * scaling
-
-#           perturbed_images = images + delta  # Apply constrained perturbation
-
-#           # Step 3: Apply clipping to valid range [0,1]
-#           perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-
-#           # Step 4: Re-apply volume constraint after all other constraints
-#           # This ensures volume constraint takes precedence if there's a conflict
-#           perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-
-#       return perturbed_images
-
-#     max_test_size = testX_CNN.shape[0]
-#     num_batches = max_test_size // batch_size
-
-#     for epsilon in epsilon_values:
-#         print(f"\nAnalyzing epsilon: {epsilon}")
-
-#         pgd_predictions = []
-#         fgsm_predictions = []
-
-#         for i in range(num_batches):
-#             start_idx = i * batch_size
-#             end_idx = min((i + 1) * batch_size, max_test_size)
-
-#             try:
-#                 # Prepare batch data
-#                 batch_images = data_set(testX_CNN, start_idx, end_idx)
-#                 batch_images = volume_constraint(batch_images, testX_CNN, 2, start_idx, end_idx)
-#                 batch_labels = testY_CNN[start_idx:end_idx]
-
-#                 # Generate adversarial examples
-#                 perturbed_images_pgd = pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx)
-#                 perturbed_images_fgsm = fgsm_attack(batch_images, batch_labels, epsilon)
-
-#                 if perturbed_images_pgd is not None and perturbed_images_fgsm is not None:
-#                     # Calculate perturbation volumes
-#                     pgd_volume = np.mean(np.linalg.norm(
-#                         (perturbed_images_pgd - batch_images).numpy().reshape(batch_images.shape[0], -1),
-#                         axis=1
-#                     ))
-#                     fgsm_volume = np.mean(np.linalg.norm(
-#                         (perturbed_images_fgsm - batch_images).numpy().reshape(batch_images.shape[0], -1),
-#                         axis=1
-#                     ))
-#                     print(f"Batch {i+1}/{num_batches} - PGD volume: {pgd_volume:.6f}, FGSM volume: {fgsm_volume:.6f}")
-
-#                     # Get predictions
-#                     pgd_pred = get_model_predictions(perturbed_images_pgd)
-#                     fgsm_pred = get_model_predictions(perturbed_images_fgsm)
-
-#                     if pgd_pred is not None:
-#                         pgd_predictions.append(pgd_pred)
-#                     if fgsm_pred is not None:
-#                         fgsm_predictions.append(fgsm_pred)
-
-#             except Exception as e:
-#                 print(f"Error processing batch {i}: {str(e)}")
-#                 continue
-
-#             tf.keras.backend.clear_session()
-
-#         if pgd_predictions and fgsm_predictions:
-#             pgd_predictions = np.vstack(pgd_predictions)
-#             fgsm_predictions = np.vstack(fgsm_predictions)
-
-#             # Process for each threshold
-#             for threshold in thresholds:
-#                 # Process PGD results
-#                 pgd_result = implement_fi2010_strategy(
-#                     predictions=pgd_predictions,
-#                     dec_data=dec_test,
-#                     prob_threshold=threshold
-#                 )
-#                 if pgd_result:
-#                     pgd_result.update({
-#                         'epsilon': epsilon,
-#                         'threshold': threshold,
-#                         'attack_type': 'PGD'
-#                     })
-#                     results_pgd.append(pgd_result)
-
-#                 # Process FGSM results
-#                 fgsm_result = implement_fi2010_strategy(
-#                     predictions=fgsm_predictions,
-#                     dec_data=dec_test,
-#                     prob_threshold=threshold
-#                 )
-#                 if fgsm_result:
-#                     fgsm_result.update({
-#                         'epsilon': epsilon,
-#                         'threshold': threshold,
-#                         'attack_type': 'FGSM'
-#                     })
-#                     results_fgsm.append(fgsm_result)
-
-#     # Create DataFrames
-#     pgd_df = pd.DataFrame(results_pgd) if results_pgd else pd.DataFrame()
-#     fgsm_df = pd.DataFrame(results_fgsm) if results_fgsm else pd.DataFrame()
-
-#     # Display detailed summaries
-#     if not pgd_df.empty:
-#         print("\nPGD Attack Summary by Threshold:")
-#         summary_pgd = pgd_df.groupby(['epsilon', 'threshold'])[
-#             ['total_profit', 'num_trades', 'win_rate']
-#         ].mean().round(4)
-
-#         # Format the display
-#         pd.set_option('display.float_format', lambda x: '%.4f' % x)
-#         print("\nPGD Analysis Results:")
-#         for eps in epsilon_values:
-#             print(f"\nEpsilon: {eps}")
-#             print(summary_pgd.loc[eps])
-
-#     if not fgsm_df.empty:
-#         print("\nFGSM Attack Summary by Threshold:")
-#         summary_fgsm = fgsm_df.groupby(['epsilon', 'threshold'])[
-#             ['total_profit', 'num_trades', 'win_rate']
-#         ].mean().round(4)
-
-#         print("\nFGSM Analysis Results:")
-#         for eps in epsilon_values:
-#             print(f"\nEpsilon: {eps}")
-#             print(summary_fgsm.loc[eps])
-
-#     return pgd_df, fgsm_df
-
-# def implement_fi2010_strategy(predictions, dec_data, prob_threshold=0.5, k=4, alpha=0.001):
-#     """Implementation of the FI-2010 trading strategy"""
-#     ask_prices = dec_data[0, :]
-#     bid_prices = dec_data[2, :]
-#     mid_prices = (ask_prices + bid_prices) / 2
-
-#     min_length = min(len(predictions), len(mid_prices) - k)
-#     predictions = predictions[:min_length]
-#     trades_info = []
-#     budget = 100
-
-#     for i in range(k, min_length):
-#         m_plus = np.mean(mid_prices[i+1:i+k+1])
-#         lt = (m_plus - mid_prices[i]) / mid_prices[i]
-
-#         pred_class = np.argmax(predictions[i])
-#         max_prob = np.max(predictions[i])
-
-#         if max_prob > prob_threshold and pred_class != 1:
-#             actual_direction = 1 if lt > alpha else (-1 if lt < -alpha else 0)
-#             shares = budget / mid_prices[i]
-
-#             if pred_class == 2:  # Long trade
-#                 cost = shares * mid_prices[i]
-#                 proceeds = shares * m_plus
-#                 profit = proceeds - cost
-#                 trades_info.append({
-#                     'movement': 'up',
-#                     'profit': profit,
-#                     'correct': actual_direction == 1
-#                 })
-#             elif pred_class == 0:  # Short trade
-#                 proceeds = shares * mid_prices[i]
-#                 cost = shares * m_plus
-#                 profit = proceeds - cost
-#                 trades_info.append({
-#                     'movement': 'down',
-#                     'profit': profit,
-#                     'correct': actual_direction == -1
-#                 })
-
-#     if trades_info:
-#         trades_df = pd.DataFrame(trades_info)
-#         return {
-#             'threshold': prob_threshold,
-#             'total_profit': trades_df['profit'].sum(),
-#             'num_trades': len(trades_df),
-#             'win_rate': trades_df['correct'].mean() * 100,
-#             'avg_profit': trades_df['profit'].mean(),
-#             'long_trades': len(trades_df[trades_df['movement'] == 'up']),
-#             'short_trades': len(trades_df[trades_df['movement'] == 'down'])
-#         }
-#     return None
-
-# epsilon_values = [0.01]
-# results_pgd, results_fgsm = run_adversarial_trading_analysis(
-#     model=model,
-#     testX_CNN=testX_CNN,
-#     testY_CNN=testY_CNN,
-#     dec_test=dec_test,
-#     epsilon_values=epsilon_values,
-#     batch_size=2000
-# )
-
-# %% id="2KZocKXi6EZe"
+# %% id="c4f3ccf2"
