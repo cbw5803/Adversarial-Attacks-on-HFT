@@ -12,7 +12,7 @@
 #     name: python3
 # ---
 
-# %% id="uR4dJ6GVnvlS"
+# %% id="b7b62f70"
 import pandas as pd
 import pickle
 import numpy as np
@@ -43,11 +43,11 @@ tf.random.set_seed(RANDOM_SEED)
 # If you need to use set_session, try this instead:
 # from tensorflow.python.keras.backend import set_session
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="3SamlGZPoDtz" outputId="da37b15e-472c-4d00-d957-3a24f1492c83"
+# %% colab={"base_uri": "https://localhost:8080/"} id="3c4e7611" outputId="f67a436e-6dc6-41ef-c640-239a7c7861bb"
 from google.colab import drive
 drive.mount('/content/drive')
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="slkCcr5PoGN5" outputId="45a1b5ce-7eab-4a3a-c525-e81f18c7759e"
+# %% colab={"base_uri": "https://localhost:8080/"} id="05cf7829" outputId="7a142a25-1084-4dac-d9e2-95e2697cad7b"
 import os
 import zipfile
 
@@ -81,7 +81,7 @@ else:
     print('Data already existed and is ready in Google Drive.')
 
 
-# %% id="5oddrxmeoJxI"
+# %% id="0368d0ae"
 def prepare_x(data):
     df1 = data[:40, :].T
     return np.array(df1)
@@ -131,7 +131,7 @@ def macro_f1(y_true, y_pred):
     return tf.reduce_mean(tf.stack(f1_scores))
 
 
-# %% id="RmH5_HJyoLmZ"
+# %% id="8eda3863" colab={"base_uri": "https://localhost:8080/"} outputId="cbb63b0f-b8fb-4497-b057-071829989c59"
 # Assuming UNZIPPED_DATA_DIR is defined in a previous cell (e.g., vxrZwaTErwd3) and contains the path
 # to the unzipped files in Google Drive.
 
@@ -161,7 +161,7 @@ print(valX_CNN.shape, valY_CNN.shape)
 print(testX_CNN.shape, testY_CNN.shape)
 
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 1000} id="bjlXsCZioNUj" outputId="22039349-e2c3-4d17-f738-5422230b2bcc"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 1000} id="bb4a39ef" outputId="7b3a18ef-8fa4-4ddf-9758-c4ebf480a3af"
 def create_deeplob(T, NF, number_of_lstm):
     input_lmd = Input(shape=(T, NF, 1))
 
@@ -221,7 +221,7 @@ def create_deeplob(T, NF, number_of_lstm):
 deeplob = create_deeplob(trainX_CNN.shape[1], trainX_CNN.shape[2], n_hiddens)
 deeplob.summary()
 
-# %% id="trnQ7AZIoWAh" colab={"base_uri": "https://localhost:8080/"} outputId="22be3357-b1a5-4ec1-b6d5-91b196ca9729"
+# %% colab={"base_uri": "https://localhost:8080/"} id="078b14f7" outputId="1e793ec9-f1db-4163-ca56-a9a88b3d09a0"
 checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/DeepLOB_{RANDOM_SEED}.weights.h5'
 
 model = create_deeplob(trainX_CNN.shape[1], trainX_CNN.shape[2], n_hiddens)  # Implement this function based on your model loading logic
@@ -237,13 +237,13 @@ else:
         save_best_only=True)
     model.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN), epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="xiE0jqnvoYw5" outputId="cf7849f3-89bc-425e-d930-68a5dbc29aed"
+# %% colab={"base_uri": "https://localhost:8080/"} id="be91be11" outputId="7cb53308-2929-41b7-dd21-415365f6b17e"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(model.predict(testX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="YRtFdK88ocYR" outputId="ceff84b0-c904-4663-b3ec-ef4fdb2eaeca"
+# %% colab={"base_uri": "https://localhost:8080/"} id="88ac8d7f" outputId="b06e4887-a597-4ea0-82b9-73c0d8641a89"
 print(classification_report(np.argmax(testY_CNN, axis=1), np.argmax(model.predict(testX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 489} id="4G5zcYrUoeAI" outputId="1aa62d08-0595-45ab-f8c7-0b03c21a3a2a"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 489} id="566b96f0" outputId="00a59888-b955-49c6-debc-c75469183e8b"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -263,13 +263,13 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="E5fDzIMRofjU" outputId="71e4caaa-2164-4d69-87bc-b5ccbfed0924"
+# %% colab={"base_uri": "https://localhost:8080/"} id="6522fab2" outputId="847a0fcc-59d1-4471-8562-0c542bd1373e"
 print(accuracy_score(np.argmax(trainY_CNN, axis=1), np.argmax(model.predict(trainX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="lezk-933ont4" outputId="93a16513-af85-4a1e-df1b-525121e54f51"
+# %% colab={"base_uri": "https://localhost:8080/"} id="8ddc3cab" outputId="c2d343d9-583b-488c-9b79-d73c6bd943f7"
 print(classification_report(np.argmax(trainY_CNN, axis=1), np.argmax(model.predict(trainX_CNN), axis=1)))
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 489} id="SrH6uFDKo4a_" outputId="1f1fd3c9-1712-4d36-ca30-6e22ae929054"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 489} id="25cef5c0" outputId="f1a7ef76-f3ce-4ead-b584-672827b03892"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -289,7 +289,7 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="h69nezDzo91A" outputId="9258b2bf-a8a3-4a9c-e50d-0aeb02e7803c"
+# %% colab={"base_uri": "https://localhost:8080/"} id="5139a9b6" outputId="3f1be2eb-2773-42bc-da15-ccc47e8bcb6b"
 """ TRADING STRATEGY BEFORE ATTACK ON TEST DATA"""
 import numpy as np
 import pandas as pd
@@ -434,7 +434,7 @@ if results:
     pd.set_option('display.float_format', lambda x: '{:.6f}'.format(x))
     print(results_df)
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="2qc3yLhUpFW3" outputId="b0fc1ead-dc51-4118-f0e7-608cbba34ce6"
+# %% colab={"base_uri": "https://localhost:8080/"} id="2ba9e1f6" outputId="dc3c83ef-dd4e-4af9-d21d-cf0aa3a8fa75"
 """ TRADING STRATEGY BEFORE ATTACK ON TRAIN DATA"""
 import numpy as np
 import pandas as pd
@@ -580,7 +580,7 @@ if results:
     print(results_df)
 
 
-# %% id="06VmLKUUpXjg"
+# %% id="25351277"
 def calculate_perturbation_volume(original, perturbed):
     original_flat = original.reshape(original.shape[0], -1)
     perturbed_flat = perturbed.reshape(perturbed.shape[0], -1)
@@ -589,7 +589,7 @@ def calculate_perturbation_volume(original, perturbed):
     return avg_perturbation
 
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="ez4jB4EFpc9f" outputId="e95cf1a8-8a8c-480f-d5ee-536a701ba5f6"
+# %% colab={"base_uri": "https://localhost:8080/"} id="3493f14c" outputId="75da0ae1-76af-4d5a-f1a7-bea81148839d"
 """ ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
@@ -970,7 +970,7 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="YXVKEoISpq1g" outputId="b178c2c4-5df8-4843-bd0c-e954ea13b103"
+# %% colab={"base_uri": "https://localhost:8080/"} id="a68b5d28" outputId="11ed89f4-2798-4948-c069-4e58eaf17328"
 """ ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
@@ -1351,7 +1351,7 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="Qtz8ApMOsA6G" outputId="d6294c74-3f0f-47bd-f70d-b8117885046a"
+# %% colab={"base_uri": "https://localhost:8080/"} id="83aab1b7" outputId="9dd773a9-f178-40c4-8e6c-4c30cfa1bc55"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -1651,7 +1651,7 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="FL4fL6U0uRFE" outputId="6a0a0ff4-2f56-43dc-a04b-e5a34215c0e2"
+# %% colab={"base_uri": "https://localhost:8080/"} id="2024d3fe" outputId="462db46c-c84a-4b67-8be0-3809d2c101a3"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -1951,4 +1951,4 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% id="CpxOnvxWwvRC"
+# %% id="68db93f0"

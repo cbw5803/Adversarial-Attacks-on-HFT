@@ -43,11 +43,11 @@ tf.random.set_seed(RANDOM_SEED)
 # If you need to use set_session, try this instead:
 # from tensorflow.python.keras.backend import set_session
 
-# %% id="fbc0c1fa"
+# %% id="fbc0c1fa" colab={"base_uri": "https://localhost:8080/"} outputId="8582c58d-4798-4175-cc9d-a7fbd8eba4a8"
 from google.colab import drive
 drive.mount('/content/drive')
 
-# %% id="fe7aa355"
+# %% id="fe7aa355" colab={"base_uri": "https://localhost:8080/"} outputId="2b8e57cf-d011-4ae6-bf0c-bf28ad8891b7"
 import os
 import zipfile
 
@@ -129,7 +129,7 @@ def macro_f1(y_true, y_pred):
     return tf.reduce_mean(tf.stack(f1_scores))
 
 
-# %% id="2fce0b53"
+# %% id="2fce0b53" colab={"base_uri": "https://localhost:8080/"} outputId="b4a59a02-3539-4d15-c394-2abc9b72a347"
 dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
 dec_val = dec_data[:, int(np.floor(dec_data.shape[1] * 0.8)):]
@@ -152,7 +152,7 @@ print(valX_CNN.shape, valY_CNN.shape)
 print(testX_CNN.shape, testY_CNN.shape)
 
 
-# %% id="d823ce90"
+# %% id="d823ce90" colab={"base_uri": "https://localhost:8080/", "height": 449} outputId="84b0b47b-4db6-4756-9864-df8549ab623e"
 def create_cnn_model(input_shape):
     input_layer = Input(shape=input_shape)
     conv1 = Conv2D(64, kernel_size=(4, 40), activation='relu')(input_layer)
@@ -175,7 +175,7 @@ cnn_model.compile(optimizer='adam', loss=tf.keras.losses.CategoricalCrossentropy
 
 cnn_model.summary()
 
-# %% id="c9fc0bec"
+# %% id="c9fc0bec" colab={"base_uri": "https://localhost:8080/"} outputId="e155a51a-68ad-4f6d-9ede-a4f7ee766e69"
 # %%time
 checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/CNN_1_newdata_{RANDOM_SEED}.weights.h5'
 
@@ -193,10 +193,10 @@ else:
     cnn_model.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
                  epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
-# %% id="82b41f28"
+# %% id="82b41f28" colab={"base_uri": "https://localhost:8080/"} outputId="3a6ce19f-5c03-444e-ed39-8b1446955aef"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(cnn_model.predict(testX_CNN), axis=1)))
 
-# %% id="1ece8135"
+# %% id="1ece8135" colab={"base_uri": "https://localhost:8080/", "height": 489} outputId="3b7a6d27-01ef-4fb0-d62c-763ebf6d49c2"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -216,14 +216,14 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% id="93283581"
+# %% id="93283581" colab={"base_uri": "https://localhost:8080/"} outputId="a2b08217-ae13-47e9-eb58-123c079bb298"
 from sklearn.metrics import classification_report, accuracy_score
 print(classification_report(np.argmax(testY_CNN, axis=1), np.argmax(cnn_model.predict(testX_CNN), axis=1)))
 
-# %% id="b650b185"
+# %% id="b650b185" colab={"base_uri": "https://localhost:8080/"} outputId="95ab844e-2976-440c-9949-d0ca41ece134"
 print(accuracy_score(np.argmax(trainY_CNN, axis=1), np.argmax(cnn_model.predict(trainX_CNN), axis=1)))
 
-# %% id="21e3e7bd"
+# %% id="21e3e7bd" colab={"base_uri": "https://localhost:8080/", "height": 489} outputId="63841ca4-135c-439b-d7f0-18f9a028dc5c"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -243,11 +243,11 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% id="65e7a2d2"
+# %% id="65e7a2d2" colab={"base_uri": "https://localhost:8080/"} outputId="d9b6242e-9619-468c-ec96-e50f1ecc1f88"
 from sklearn.metrics import classification_report, accuracy_score
 print(classification_report(np.argmax(trainY_CNN, axis=1), np.argmax(cnn_model.predict(trainX_CNN), axis=1)))
 
-# %% id="c1fd3a16"
+# %% id="c1fd3a16" colab={"base_uri": "https://localhost:8080/"} outputId="93b1aa7c-6cac-4150-897b-6b9e96ba6042"
 ## MIDDLE PRICE, DENORMALISED, SMOOTHENING,   TEST, LABELS BASED ON DEEPLOB  ##
 import numpy as np
 import pandas as pd
@@ -392,7 +392,7 @@ if results:
     pd.set_option('display.float_format', lambda x: '{:.6f}'.format(x))
     print(results_df)
 
-# %% id="5de5b8da"
+# %% id="5de5b8da" colab={"base_uri": "https://localhost:8080/"} outputId="c731e47d-116a-4b84-b5ae-f355e219be6c"
 ## MIDDLE PRICE, DENORMALISED, SMOOTHENING, TRAIN, LABELS BASED ON DEEPLOB  ##
 import numpy as np
 import pandas as pd
@@ -547,7 +547,7 @@ def calculate_perturbation_volume(original, perturbed):
     return avg_perturbation
 
 
-# %% id="cc613143"
+# %% id="cc613143" colab={"base_uri": "https://localhost:8080/"} outputId="58f087fa-bb30-4e0d-a916-0c355fe51bee"
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import accuracy_score
@@ -898,7 +898,7 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% id="c17121f4"
+# %% id="c17121f4" colab={"base_uri": "https://localhost:8080/"} outputId="2380bb2f-8990-4f72-d2d6-e5a55bd25f1f"
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import accuracy_score
@@ -1266,7 +1266,7 @@ for epsilon in epsilon_values:
 
 # %% id="fba9cc0f"
 
-# %% id="3c94feb6"
+# %% id="3c94feb6" colab={"base_uri": "https://localhost:8080/"} outputId="f5ca2fd9-6cf0-4e44-db2a-c8cb4a927bb9"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -1566,7 +1566,7 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% id="1b5ce9c4"
+# %% id="1b5ce9c4" colab={"base_uri": "https://localhost:8080/"} outputId="7e761d29-7b09-4685-e9bf-c8866db6db0d"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd

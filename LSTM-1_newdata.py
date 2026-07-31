@@ -38,14 +38,14 @@ tf.random.set_seed(RANDOM_SEED)
 # %% [markdown] id="dad06862"
 # ## Mounting Google Drive
 
-# %% id="9e43f149"
+# %% id="9e43f149" colab={"base_uri": "https://localhost:8080/"} outputId="b7c33a32-903f-472e-9491-82b31e7f7b9e"
 from google.colab import drive
 drive.mount('/content/drive')
 
 # %% [markdown] id="6d03ac26"
 # # Importing Dataset
 
-# %% id="677e72c5"
+# %% id="677e72c5" colab={"base_uri": "https://localhost:8080/"} outputId="1548690f-26e5-4017-e3c8-3f3640bc3e55"
 import os
 import zipfile
 
@@ -131,7 +131,7 @@ def macro_f1(y_true, y_pred):
     return tf.reduce_mean(tf.stack(f1_scores))
 
 
-# %% id="c92a96a4"
+# %% id="c92a96a4" colab={"base_uri": "https://localhost:8080/"} outputId="331691c9-2531-4a4b-974e-ce52ad1983bd"
 dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
 dec_val = dec_data[:, int(np.floor(dec_data.shape[1] * 0.8)):]
@@ -156,7 +156,7 @@ print(testX_CNN.shape, testY_CNN.shape)
 # %% [markdown] id="e7a660fd"
 # # Model
 
-# %% id="96e005ce"
+# %% id="96e005ce" colab={"base_uri": "https://localhost:8080/", "height": 321} outputId="934ea028-f9b8-4705-cf45-29cd06c0463a"
 
 from keras.models import Model
 from keras.layers import Input, LSTM, Dense, Dropout, Reshape
@@ -185,7 +185,7 @@ def create_lstm1(T, NF, number_of_lstm):
 lstm1 = create_lstm1(trainX_CNN.shape[1], trainX_CNN.shape[2], n_hiddens)
 lstm1.summary()
 
-# %% id="7ee2b796"
+# %% id="7ee2b796" colab={"base_uri": "https://localhost:8080/"} outputId="239b76a7-d358-49fb-f9c0-6b096407d1da"
 # %%time
 checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/LSTM_1_newdata_{RANDOM_SEED}.weights.h5'
 
@@ -203,13 +203,13 @@ else:
     lstm1.fit(trainX_CNN, trainY_CNN, validation_data=(valX_CNN, valY_CNN),
               epochs=200, batch_size=128, verbose=1, callbacks=[model_checkpoint_callback])
 
-# %% id="f15d2695"
+# %% id="f15d2695" colab={"base_uri": "https://localhost:8080/"} outputId="41eb2f8d-6ead-49cb-f46e-5cc0df1127b5"
 print(accuracy_score(np.argmax(testY_CNN, axis=1), np.argmax(lstm1.predict(testX_CNN), axis=1)))
 
-# %% id="80461ba9"
+# %% id="80461ba9" colab={"base_uri": "https://localhost:8080/"} outputId="90a00255-429e-4a80-8241-03ddc093ebcc"
 print(classification_report(np.argmax(testY_CNN, axis=1), np.argmax(lstm1.predict(testX_CNN), axis=1)))
 
-# %% id="65394c83"
+# %% id="65394c83" colab={"base_uri": "https://localhost:8080/", "height": 489} outputId="f1e2ec2e-fdb8-46e8-9769-ca75bb27da91"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -229,13 +229,13 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% id="96d00706"
+# %% id="96d00706" colab={"base_uri": "https://localhost:8080/"} outputId="edef25cd-c36b-4fef-b4cd-6a3e8f44263a"
 print(accuracy_score(np.argmax(trainY_CNN, axis=1), np.argmax(lstm1.predict(trainX_CNN), axis=1)))
 
-# %% id="3ab8ad37"
+# %% id="3ab8ad37" colab={"base_uri": "https://localhost:8080/"} outputId="98fbc3de-5dc0-4b53-8a9f-1f658f31b61d"
 print(classification_report(np.argmax(trainY_CNN, axis=1), np.argmax(lstm1.predict(trainX_CNN), axis=1)))
 
-# %% id="d11580fe"
+# %% id="d11580fe" colab={"base_uri": "https://localhost:8080/", "height": 489} outputId="758d2c9c-ffd8-497d-90c6-a6917db03f76"
 from sklearn.metrics import precision_recall_curve, auc
 
 # Get predicted probabilities for the positive class
@@ -255,7 +255,7 @@ plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
 
-# %% id="f8258965"
+# %% id="f8258965" colab={"base_uri": "https://localhost:8080/"} outputId="7c65e0a2-11e6-43b6-b446-a3fae14e87b9"
 """ TRADING STRATEGY BEFORE ATTACK ON TEST DATA"""
 import numpy as np
 import pandas as pd
@@ -383,7 +383,7 @@ if results:
     pd.set_option('display.float_format', lambda x: '{:.6f}'.format(x))
     print(results_df)
 
-# %% id="ec1ca9be"
+# %% id="ec1ca9be" colab={"base_uri": "https://localhost:8080/"} outputId="2c6e41d8-197e-433f-a27a-5c42232aa24b"
 """ TRADING STRATEGY BEFORE ATTACK ON TRAIN DATA"""
 import numpy as np
 import pandas as pd
@@ -538,7 +538,7 @@ def calculate_perturbation_volume(original, perturbed):
     return avg_perturbation
 
 
-# %% id="f06ac0d8"
+# %% id="f06ac0d8" colab={"base_uri": "https://localhost:8080/"} outputId="eb6d67db-619d-4224-ae9b-b2ddb4fb4555"
 """ ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
@@ -920,7 +920,7 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% id="d8daa47f"
+# %% id="d8daa47f" colab={"base_uri": "https://localhost:8080/"} outputId="d33fb757-aa23-49b0-f6a9-b3369318898f"
 """ ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES"""
 import numpy as np
 import tensorflow as tf
@@ -1291,7 +1291,7 @@ for epsilon in epsilon_values:
     # Clean up
     tf.keras.backend.clear_session()
 
-# %% id="4862ebd6"
+# %% id="4862ebd6" colab={"base_uri": "https://localhost:8080/"} outputId="e1ca01b3-a5c9-497c-bbf7-6c906d39c647"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
@@ -1591,7 +1591,7 @@ results_pgd, results_fgsm = run_adversarial_trading_analysis(
     batch_size=2000
 )
 
-# %% id="06e28d9d"
+# %% id="06e28d9d" colab={"base_uri": "https://localhost:8080/"} outputId="4d29f859-0001-4fff-ecee-8075c101e909"
 """TRADING STRATEGY AFTER ATTACK ON 4 EPSILON VALUES"""
 import numpy as np
 import pandas as pd
