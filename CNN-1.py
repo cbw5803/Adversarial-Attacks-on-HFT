@@ -12,6 +12,9 @@
 #     name: python3
 # ---
 
+# %%
+# TEST COMMENT: verify push script syncs .py to .ipynb
+
 # %% id="PXJaF6P5cDyf"
 import pandas as pd
 import pickle

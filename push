@@ -1,0 +1,25 @@
+#!/bin/bash
+set -e
+
+if [ -z "$1" ]; then
+    echo "用法: ./push <commit-message>"
+    exit 1
+fi
+
+echo "=== 1. 同步所有 Jupytext 配对的 .py → .ipynb ==="
+for pyfile in $(grep -rl "formats: ipynb,py:percent" . --include="*.py"); do
+    echo "  syncing $pyfile"
+    python3 -m jupytext --sync "$pyfile"
+done
+
+echo ""
+echo "=== 2. git add ==="
+git add -A
+
+echo ""
+echo "=== 3. git commit ==="
+git commit -m "$1"
+
+echo ""
+echo "=== 4. git push ==="
+git push origin

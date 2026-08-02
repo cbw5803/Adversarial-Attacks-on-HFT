@@ -1,0 +1,20 @@
+The perturbation we apply does not appear to scale with epsilon. The notebooks print this for DeepLOB on FI-2010:
+
+perturbation volume, PGD          at epsilon 1e-06:  2.2695727
+perturbation volume, FGSM         at epsilon 1e-06:  0.0000045
+perturbation volume, Random Noise at epsilon 1e-06:  2.2640033
+
+FGSM tracks epsilon as expected. PGD and random noise sit at about 2.264 at every epsilon on the grid. As far as I can tell, this is because volume_constraint takes an elementwise maximum over a reference tensor, which dominates whatever the attack contributed.
+
+If that reading is right, our abstract is wrong. It says CNN accuracy falls from 76 per cent to 48 per cent "under PGD at epsilon = 1e-6", when the perturbation actually applied was around 2.264. Table 1, Panel D in our most recent draft shows 2.264 flat across the whole grid, which I now think is what Reviewer 4 was pointing to when he asked why the perturbation volume barely moves.
+
+Four things seem to combine here, and all of them are in the code as it stood before this round:
+
+- volume_constraint receives trainX_CNN, so the perturbed test window is floored against training rows rather than test rows.
+- pgd_attack is defined twice. The version used for the low epsilon values takes epsilon as an argument and never uses it. The version used for the high values projects onto an L2 ball.
+- That projection is then undone, because volume_constraint runs after it.
+- FGSM and random noise use an L-infinity budget while PGD uses L2, so a given epsilon is not the same size of perturbation in different arms.
+
+The consequence I care most about is that, where the perturbations are comparable in magnitude, the gap between the adversarial attacks and random noise narrows and, in places, reverses. I want to bring up what that could mean. It is possible that adversarial specificity does not survive correct measurement, and that what we have been reading as targeted fragility is partly a perturbation size effect. Adversarial specificity is the thing all three of R2, R4 and R7 asked us to demonstrate, so we need to measure it properly rather than assert it. I do not yet know whether the corrected effect is large or small, and I would rather we find out before a referee does.
+
+

@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+echo "=== 1. git pull ==="
+git pull origin
+
+echo ""
+echo "=== 2. 同步所有 .ipynb → 配对的 .py ==="
+for ipynb in $(find . -maxdepth 1 -name "*.ipynb"); do
+    pyfile="${ipynb%.ipynb}.py"
+    if [ -f "$pyfile" ]; then
+        echo "  syncing $ipynb → $pyfile"
+        python3 -m jupytext --sync "$ipynb"
+    fi
+done
+
+echo ""
+echo "=== Done ==="
