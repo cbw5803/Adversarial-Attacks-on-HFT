@@ -13,7 +13,7 @@
 # ---
 
 # %%
-# TEST COMMENT: verify push script syncs .py to .ipynb
+# TEST COMMENT: verify push script syncs .py to .ipynb OK, I get it
 
 # %% id="PXJaF6P5cDyf"
 import pandas as pd
@@ -50,7 +50,7 @@ tf.random.set_seed(RANDOM_SEED)
 from google.colab import drive
 drive.mount('/content/drive')
 
-# %% id="YOElC7b8cZq7" outputId="87e39256-64ae-473b-b320-59cee0022a7c" colab={"base_uri": "https://localhost:8080/"}
+# %% colab={"base_uri": "https://localhost:8080/"} id="YOElC7b8cZq7" outputId="87e39256-64ae-473b-b320-59cee0022a7c"
 import os
 import zipfile
 
@@ -132,7 +132,7 @@ def macro_f1(y_true, y_pred):
     return tf.reduce_mean(tf.stack(f1_scores))
 
 
-# %% id="KHX4aeaWclN0" outputId="062050b6-692c-460d-c94d-5863414632cf" colab={"base_uri": "https://localhost:8080/"}
+# %% colab={"base_uri": "https://localhost:8080/"} id="KHX4aeaWclN0" outputId="062050b6-692c-460d-c94d-5863414632cf"
 dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
 dec_val = dec_data[:, int(np.floor(dec_data.shape[1] * 0.8)):]
@@ -178,7 +178,7 @@ cnn_model.compile(optimizer='adam', loss=tf.keras.losses.CategoricalCrossentropy
 
 cnn_model.summary()
 
-# %% id="E1Xv2KQVceSs" outputId="938e0dc9-af85-4080-894d-019ea7607b64" colab={"base_uri": "https://localhost:8080/"}
+# %% colab={"base_uri": "https://localhost:8080/"} id="E1Xv2KQVceSs" outputId="938e0dc9-af85-4080-894d-019ea7607b64"
 # %%time
 checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/CNN_1_{RANDOM_SEED}.weights.h5'
 

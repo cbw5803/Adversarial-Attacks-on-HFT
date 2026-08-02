@@ -1,0 +1,37 @@
+统一修复后的 pgd_attack
+
+修复 Bug 1-4 后，pgd_attack 变为（两个 cell 统一用这个版本）：
+
+def pgd_attack(images, labels, epsilon):
+    perturbed_images = tf.identity(images)
+    alpha = 2.5 * epsilon / num_iterations  # 步长与 epsilon 自适应
+
+    for _ in range(num_iterations):
+        with tf.GradientTape() as tape:
+            tape.watch(perturbed_images)
+            predictions = model(perturbed_images)
+            loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
+        gradient = tape.gradient(loss, perturbed_images)
+        signed_grad = tf.sign(gradient)
+
+        # mask: 只扰动最后一步的 volume 特征
+        signed_masked = signed_grad.numpy()
+        signed_masked[:, :99, :, :] = 0
+        signed_masked[:, 99:, ::2, :] = 0
+        signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
+
+        # 梯度步
+        perturbed_images = perturbed_images + alpha * signed_masked
+
+        # L∞ 投影 + volume floor: delta ∈ [0, epsilon]
+        delta = perturbed_images - images
+        delta = tf.clip_by_value(delta, 0, epsilon)
+        perturbed_images = images + delta
+
+        # 值域约束
+        perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
+
+    return perturbed_images
+
+注意：函数签名变了——不再需要 trainX_CNN、start_idx、end_idx 参数。调用处需同步修改。
+
