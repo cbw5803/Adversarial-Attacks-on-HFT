@@ -47,7 +47,7 @@ tf.random.set_seed(RANDOM_SEED)
 from google.colab import drive
 drive.mount('/content/drive')
 
-# %% id="a2mHh6jYWOH_" outputId="5bc77c66-cb96-48a6-c239-ffb7a3d45b38" colab={"base_uri": "https://localhost:8080/"}
+# %% colab={"base_uri": "https://localhost:8080/"} id="a2mHh6jYWOH_" outputId="5bc77c66-cb96-48a6-c239-ffb7a3d45b38"
 import os
 import zipfile
 
@@ -129,7 +129,7 @@ def macro_f1(y_true, y_pred):
     return tf.reduce_mean(tf.stack(f1_scores))
 
 
-# %% id="jx_NLoMwWTtY" outputId="22267022-516e-427c-a96f-b8abb25cad2d" colab={"base_uri": "https://localhost:8080/"}
+# %% colab={"base_uri": "https://localhost:8080/"} id="jx_NLoMwWTtY" outputId="22267022-516e-427c-a96f-b8abb25cad2d"
 dec_data = np.loadtxt(os.path.join(UNZIPPED_DATA_DIR, 'Train_Dst_NoAuction_DecPre_CF_7.txt'))
 dec_train = dec_data[:, :int(np.floor(dec_data.shape[1] * 0.8))]
 dec_val = dec_data[:, int(np.floor(dec_data.shape[1] * 0.8)):]
@@ -177,7 +177,7 @@ def create_lstm2(T, NF, number_of_lstm):
 lstm2 = create_lstm2(trainX_CNN.shape[1], trainX_CNN.shape[2], 64)
 lstm2.summary()
 
-# %% id="1BSzrq4RWe1h" outputId="f18ef0d6-82c0-423f-93ce-9efc15c5a648" colab={"base_uri": "https://localhost:8080/"}
+# %% colab={"base_uri": "https://localhost:8080/"} id="1BSzrq4RWe1h" outputId="f18ef0d6-82c0-423f-93ce-9efc15c5a648"
 # %%time
 checkpoint_filepath = f'/content/drive/MyDrive/LOBCNN/models/LSTM_2_{RANDOM_SEED}.weights.h5'
 
@@ -549,6 +549,11 @@ def calculate_perturbation_volume(original, perturbed):
     return avg_perturbation
 
 
+# %% id="WtOh18eOdNEj"
+# Define constants
+num_iterations = 40
+
+
 # %% colab={"base_uri": "https://localhost:8080/"} id="44gLbei-g84P" outputId="029eb5b9-83ec-42a4-cb09-6fc2ea42688d"
 """ ADVERSARIAL ATTACK ON TEST DATA ON 4 EPSILON VALUES (LOW)"""
 import numpy as np
@@ -563,8 +568,7 @@ max_test_size = testX_CNN.shape[0]
 batch_size = 2000
 num_batches = max_test_size // batch_size
 epsilon_values = [0.000001, 0.00001, 0.0001, 0.001]
-num_iterations = 5
-step_size = 0.01
+
 
 # Define your model
 model = lstm2
@@ -925,8 +929,7 @@ max_test_size = testX_CNN.shape[0]
 batch_size = 2000
 num_batches = max_test_size // batch_size
 epsilon_values = [0.01, 0.1, 1, 10]
-num_iterations = 5
-step_size = 0.01
+
 
 # Define your model
 model = lstm2
