@@ -633,11 +633,11 @@ The perturbation is the sign of the gradient scaled by epsilon
 perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
 Clips the perturbed values to ensure they stay within valid range [0,1]
 """
-def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
+def pgd_attack(images, labels, epsilon):
     perturbed_images = tf.identity(images)
+    alpha = 2.5 * epsilon / num_iterations
 
     for _ in range(num_iterations):
-        # Gradient step
         with tf.GradientTape() as tape:
             tape.watch(perturbed_images)
             predictions = model(perturbed_images)
@@ -645,35 +645,40 @@ def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
         gradient = tape.gradient(loss, perturbed_images)
         signed_grad = tf.sign(gradient)
 
-        # Apply masking to gradient
+        # mask: only perturb volume features at the last timestep
         signed_masked = signed_grad.numpy()
         signed_masked[:, :99, :, :] = 0
         signed_masked[:, 99:, ::2, :] = 0
         signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
 
-        # Apply gradient step
-        perturbed_images = perturbed_images + step_size * signed_masked
+        # gradient step
+        perturbed_images = perturbed_images + alpha * signed_masked
 
-        # Step 1: Apply volume constraint
-        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
+        # L-infinity projection + volume floor: delta in [0, epsilon]
+        delta = perturbed_images - images
+        delta = tf.clip_by_value(delta, 0, epsilon)
+        perturbed_images = images + delta
+
+        # clip to valid range
+        perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
 
     return perturbed_images
-
-def random_noise_attack(images, epsilon, trainX_CNN, start_idx, end_idx):
-    """Random noise baseline attack: uniform noise within [-epsilon, epsilon]."""
+def random_noise_attack(images, epsilon):
+    """Random noise baseline attack: uniform noise, L-inf + volume floor."""
     noise = tf.random.uniform(tf.shape(images), -epsilon, epsilon)
     noise = noise.numpy()
     noise[:, :99, :, :] = 0
     noise[:, 99:, ::2, :] = 0
     noise = tf.convert_to_tensor(noise, dtype=tf.float32)
     perturbed_images = images + noise
+
+    # L-infinity projection + volume floor: delta in [0, epsilon]
+    delta = perturbed_images - images
+    delta = tf.clip_by_value(delta, 0, epsilon)
+    perturbed_images = images + delta
+
     perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-    # Apply volume constraint
-    perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
     return perturbed_images
-
-
-
 def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
     images = images.numpy()
     slices = [slice(None)] * images.ndim
@@ -777,9 +782,9 @@ for epsilon in epsilon_values:
         batch_images = volume_constraint(batch_images, testX_CNN, 2, start_idx, end_idx)
         batch_labels = testY_CNN[start_idx:end_idx]
 
-        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon, trainX_CNN, start_idx, end_idx)
+        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon)
         perturbed_images2 = fgsm_attack(batch_images, batch_labels, epsilon)
-        perturbed_images3 = random_noise_attack(batch_images, epsilon, trainX_CNN, start_idx, end_idx)
+        perturbed_images3 = random_noise_attack(batch_images, epsilon)
 
         perturbation1 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images1.numpy())
         perturbation2 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images2.numpy())
@@ -973,78 +978,6 @@ def data_set(testX_CNN, start_idx, end_idx):
     shifted_testX_CNN = tf.concat([testX_CNN[start_idx:end_idx, 1:100, :, :], testX_CNN[start_idx:end_idx, 99:, :, :]], axis=1)
     return shifted_testX_CNN
 
-def fgsm_attack(images, labels, epsilon):
-    with tf.GradientTape() as tape:
-        tape.watch(images)
-        predictions = model(images)
-        loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
-    gradient = tape.gradient(loss, images)
-    signed_grad = tf.sign(gradient)
-
-    signed_masked = signed_grad.numpy()
-    signed_masked[:, :99, :, :] = 0
-    signed_masked[:, 99:, ::2, :] = 0
-    signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-    perturbed_images = images + epsilon * signed_masked
-    perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-    return perturbed_images
-
-def pgd_attack(images, labels, epsilon, trainX_CNN, start_idx, end_idx):
-    perturbed_images = tf.identity(images)
-
-    for _ in range(num_iterations):
-        # Gradient step
-        with tf.GradientTape() as tape:
-            tape.watch(perturbed_images)
-            predictions = model(perturbed_images)
-            loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
-        gradient = tape.gradient(loss, perturbed_images)
-        signed_grad = tf.sign(gradient)
-
-        # Apply masking to gradient
-        signed_masked = signed_grad.numpy()
-        signed_masked[:, :99, :, :] = 0
-        signed_masked[:, 99:, ::2, :] = 0
-        signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-        # Apply gradient step
-        perturbed_images = perturbed_images + step_size * signed_masked
-
-        # Step 1: Apply volume constraint
-        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-
-        # Step 2: Apply L2 norm constraint (projection step)
-        delta = perturbed_images - images
-        delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
-        norm = tf.norm(delta_flat, axis=1, keepdims=True)
-        norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
-        scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
-        delta = delta * scaling
-        perturbed_images = images + delta
-
-        # Step 3: Apply clipping to valid range [0,1]
-        perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-
-        # Step 4: Re-apply volume constraint
-        perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-
-    return perturbed_images
-
-def random_noise_attack(images, epsilon, trainX_CNN, start_idx, end_idx):
-    """Random noise baseline attack: uniform noise within [-epsilon, epsilon]."""
-    noise = tf.random.uniform(tf.shape(images), -epsilon, epsilon)
-    noise = noise.numpy()
-    noise[:, :99, :, :] = 0
-    noise[:, 99:, ::2, :] = 0
-    noise = tf.convert_to_tensor(noise, dtype=tf.float32)
-    perturbed_images = images + noise
-    perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-    # Apply volume constraint
-    perturbed_images = volume_constraint(perturbed_images, trainX_CNN, 2, start_idx, end_idx)
-    return perturbed_images
-
-
 def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
     images = images.numpy()
     slices = [slice(None)] * images.ndim
@@ -1148,9 +1081,9 @@ for epsilon in epsilon_values:
         batch_images = volume_constraint(batch_images, testX_CNN, 2, start_idx, end_idx)
         batch_labels = testY_CNN[start_idx:end_idx]
 
-        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon, trainX_CNN, start_idx, end_idx)
+        perturbed_images1 = pgd_attack(batch_images, batch_labels, epsilon)
         perturbed_images2 = fgsm_attack(batch_images, batch_labels, epsilon)
-        perturbed_images3 = random_noise_attack(batch_images, epsilon, trainX_CNN, start_idx, end_idx)
+        perturbed_images3 = random_noise_attack(batch_images, epsilon)
 
         perturbation1 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images1.numpy())
         perturbation2 = calculate_perturbation_volume(batch_images.numpy(), perturbed_images2.numpy())
@@ -1338,80 +1271,6 @@ def run_adversarial_trading_analysis(model, testX_CNN, testY_CNN, dec_test, epsi
             print(f"Error in model prediction: {str(e)}")
             return None
 
-    def fgsm_attack(images, labels, epsilon):
-        """Implement FGSM attack"""
-        try:
-            with tf.GradientTape() as tape:
-                tape.watch(images)
-                predictions = model(images, training=False)
-                loss = tf.keras.losses.CategoricalCrossentropy()(labels, predictions)
-
-            gradient = tape.gradient(loss, images)
-            signed_grad = tf.sign(gradient)
-
-            signed_masked = signed_grad.numpy()
-            signed_masked[:, :99, :, :] = 0
-            signed_masked[:, 99:, ::2, :] = 0
-            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-            perturbed_images = images + epsilon * signed_masked
-            return tf.clip_by_value(perturbed_images, 0, 1)
-        except Exception as e:
-            print(f"Error in FGSM attack: {str(e)}")
-            return None
-
-    def pgd_attack(images, labels, epsilon, test_data, start_idx, end_idx):
-        """Implement PGD attack with volume constraint"""
-        perturbed_images = tf.identity(images)
-
-        for _ in range(num_iterations):
-            # Gradient step
-            with tf.GradientTape() as tape:
-                tape.watch(perturbed_images)
-                predictions = model(perturbed_images, training=False)
-                loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
-            gradient = tape.gradient(loss, perturbed_images)
-            signed_grad = tf.sign(gradient)
-
-            # Apply masking to gradient
-            signed_masked = signed_grad.numpy()
-            signed_masked[:, :99, :, :] = 0
-            signed_masked[:, 99:, ::2, :] = 0
-            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-            # Apply gradient step
-            perturbed_images = perturbed_images + step_size * signed_masked
-
-            # Step 1: Apply volume constraint
-            perturbed_images = volume_constraint(perturbed_images, test_data, 2, start_idx, end_idx)
-
-            # Step 2: Apply L2 norm constraint (projection step)
-            delta = perturbed_images - images  # Calculate current perturbation
-
-            # Reshape to flatten all dimensions except batch
-            delta_flat = tf.reshape(delta, [tf.shape(delta)[0], -1])
-
-            # Calculate L2 norm on the flattened dimensions
-            norm = tf.norm(delta_flat, axis=1, keepdims=True)
-
-            # Reshape norm for broadcasting
-            norm = tf.reshape(norm, [tf.shape(delta)[0], 1, 1, 1])
-
-            # Scale perturbation
-            scaling = tf.clip_by_value(epsilon / (norm + 1e-12), 0, 1)
-            delta = delta * scaling
-
-            perturbed_images = images + delta  # Apply constrained perturbation
-
-            # Step 3: Apply clipping to valid range [0,1]
-            perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-
-            # Step 4: Re-apply volume constraint after all other constraints
-            # This ensures volume constraint takes precedence if there's a conflict
-            perturbed_images = volume_constraint(perturbed_images, test_data, 2, start_idx, end_idx)
-
-        return perturbed_images
-
     max_test_size = testX_CNN.shape[0]
     num_batches = max_test_size // batch_size
 
@@ -1432,7 +1291,7 @@ def run_adversarial_trading_analysis(model, testX_CNN, testY_CNN, dec_test, epsi
                 batch_labels = testY_CNN[start_idx:end_idx]
 
                 # Generate adversarial examples
-                perturbed_images_pgd = pgd_attack(batch_images, batch_labels, epsilon, testX_CNN, start_idx, end_idx)
+                perturbed_images_pgd = pgd_attack(batch_images, batch_labels, epsilon)
                 perturbed_images_fgsm = fgsm_attack(batch_images, batch_labels, epsilon)
 
                 if perturbed_images_pgd is not None and perturbed_images_fgsm is not None:
@@ -1638,53 +1497,6 @@ def run_adversarial_trading_analysis(model, testX_CNN, testY_CNN, dec_test, epsi
             print(f"Error in model prediction: {str(e)}")
             return None
 
-    def fgsm_attack(images, labels, epsilon):
-        """Implement FGSM attack"""
-        try:
-            with tf.GradientTape() as tape:
-                tape.watch(images)
-                predictions = model(images, training=False)
-                loss = tf.keras.losses.CategoricalCrossentropy()(labels, predictions)
-
-            gradient = tape.gradient(loss, images)
-            signed_grad = tf.sign(gradient)
-
-            signed_masked = signed_grad.numpy()
-            signed_masked[:, :99, :, :] = 0
-            signed_masked[:, 99:, ::2, :] = 0
-            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-            perturbed_images = images + epsilon * signed_masked
-            return tf.clip_by_value(perturbed_images, 0, 1)
-        except Exception as e:
-            print(f"Error in FGSM attack: {str(e)}")
-            return None
-
-    def pgd_attack(images, labels, epsilon, test_data, start_idx, end_idx):
-        """Implement PGD attack with volume constraint"""
-        perturbed_images = tf.identity(images)
-
-        for _ in range(num_iterations):
-            # Gradient step
-            with tf.GradientTape() as tape:
-                tape.watch(perturbed_images)
-                predictions = model(perturbed_images, training=False)
-                loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
-            gradient = tape.gradient(loss, perturbed_images)
-            signed_grad = tf.sign(gradient)
-
-            # Apply masking to gradient
-            signed_masked = signed_grad.numpy()
-            signed_masked[:, :99, :, :] = 0
-            signed_masked[:, 99:, ::2, :] = 0
-            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-            # Apply gradient step
-            perturbed_images = perturbed_images + step_size * signed_masked
-            perturbed_images = volume_constraint(perturbed_images, test_data, 2, start_idx, end_idx)
-
-        return perturbed_images
-
     max_test_size = testX_CNN.shape[0]
     num_batches = max_test_size // batch_size
 
@@ -1705,7 +1517,7 @@ def run_adversarial_trading_analysis(model, testX_CNN, testY_CNN, dec_test, epsi
                 batch_labels = testY_CNN[start_idx:end_idx]
 
                 # Generate adversarial examples
-                perturbed_images_pgd = pgd_attack(batch_images, batch_labels, epsilon, testX_CNN, start_idx, end_idx)
+                perturbed_images_pgd = pgd_attack(batch_images, batch_labels, epsilon)
                 perturbed_images_fgsm = fgsm_attack(batch_images, batch_labels, epsilon)
 
                 if perturbed_images_pgd is not None and perturbed_images_fgsm is not None:

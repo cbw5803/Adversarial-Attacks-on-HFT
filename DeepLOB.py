@@ -1028,28 +1028,6 @@ def adversarial_pattern(image, label):
     signed_grad = tf.sign(gradient)
     return signed_grad
 
-def data_set(testX_CNN, start_idx, end_idx):
-    shifted_testX_CNN = tf.concat([testX_CNN[start_idx:end_idx, 1:100, :, :], testX_CNN[start_idx:end_idx, 99:, :, :]], axis=1)
-    return shifted_testX_CNN
-
-def fgsm_attack(images, labels, epsilon):
-    with tf.GradientTape() as tape:
-        tape.watch(images)
-        predictions = model(images)
-        loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(labels, predictions)
-    gradient = tape.gradient(loss, images)
-    signed_grad = tf.sign(gradient)
-
-    signed_masked = signed_grad.numpy()
-    signed_masked[:, :99, :, :] = 0
-    signed_masked[:, 99:, ::2, :] = 0
-    signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-    perturbed_images = images + epsilon * signed_masked
-    perturbed_images = tf.clip_by_value(perturbed_images, 0, 1)
-    return perturbed_images
-
-
 def volume_constraint(images, testX_CNN, dimension, start_idx, end_idx):
     images = images.numpy()
     slices = [slice(None)] * images.ndim
@@ -1343,28 +1321,6 @@ def run_adversarial_trading_analysis(model, testX_CNN, testY_CNN, dec_test, epsi
             print(f"Error in model prediction: {str(e)}")
             return None
 
-    def fgsm_attack(images, labels, epsilon):
-        """Implement FGSM attack"""
-        try:
-            with tf.GradientTape() as tape:
-                tape.watch(images)
-                predictions = model(images, training=False)
-                loss = tf.keras.losses.CategoricalCrossentropy()(labels, predictions)
-
-            gradient = tape.gradient(loss, images)
-            signed_grad = tf.sign(gradient)
-
-            signed_masked = signed_grad.numpy()
-            signed_masked[:, :99, :, :] = 0
-            signed_masked[:, 99:, ::2, :] = 0
-            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-            perturbed_images = images + epsilon * signed_masked
-            return tf.clip_by_value(perturbed_images, 0, 1)
-        except Exception as e:
-            print(f"Error in FGSM attack: {str(e)}")
-            return None
-
     max_test_size = testX_CNN.shape[0]
     num_batches = max_test_size // batch_size
 
@@ -1589,28 +1545,6 @@ def run_adversarial_trading_analysis(model, testX_CNN, testY_CNN, dec_test, epsi
                 return predictions.numpy()
         except Exception as e:
             print(f"Error in model prediction: {str(e)}")
-            return None
-
-    def fgsm_attack(images, labels, epsilon):
-        """Implement FGSM attack"""
-        try:
-            with tf.GradientTape() as tape:
-                tape.watch(images)
-                predictions = model(images, training=False)
-                loss = tf.keras.losses.CategoricalCrossentropy()(labels, predictions)
-
-            gradient = tape.gradient(loss, images)
-            signed_grad = tf.sign(gradient)
-
-            signed_masked = signed_grad.numpy()
-            signed_masked[:, :99, :, :] = 0
-            signed_masked[:, 99:, ::2, :] = 0
-            signed_masked = tf.convert_to_tensor(signed_masked, dtype=tf.float32)
-
-            perturbed_images = images + epsilon * signed_masked
-            return tf.clip_by_value(perturbed_images, 0, 1)
-        except Exception as e:
-            print(f"Error in FGSM attack: {str(e)}")
             return None
 
     max_test_size = testX_CNN.shape[0]
